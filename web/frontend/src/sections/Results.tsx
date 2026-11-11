@@ -13,7 +13,7 @@ const REGIMES: { value: Regime; label: string }[] = [
 
 export function Results({ cond, summary }: { cond: Conditions; summary: Summary }) {
   const [regime, setRegime] = useState<Regime>("lopo");
-  const rows = summary.table.filter((r) => r.regime === regime);
+  const rows = summary.table.filter((r) => r.regime === regime && r.method !== "d2d-pJ50");   // its lambda was selected as 0 (= released)
   const ref = Object.fromEntries(summary.table.filter((r) => r.regime === (regime.startsWith("cv") ? "cv_all" : "all"))
     .map((r) => [r.method, r]));
   return (

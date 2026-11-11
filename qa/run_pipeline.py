@@ -44,7 +44,7 @@ def main():
         if not unprepped and not pending:
             break
         if pending and (len(pending) >= a.chunk or not unprepped):
-            run(["qa.extract", "--no-prep", "--workers", "3"], env)
+            run(["qa.extract", "--no-prep", "--workers", "5"], env)
         elif unprepped:
             run(["qa.prep"], env)
     print(f"all done in {(time.time() - t0) / 60:.1f} min", flush=True)

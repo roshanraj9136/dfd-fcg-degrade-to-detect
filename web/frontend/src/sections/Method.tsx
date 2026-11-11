@@ -56,7 +56,8 @@ export function Method({ summary, cond }: { summary: Summary; cond: Conditions }
               <div className="rounded-xl border border-real/30 bg-real/5 p-4 text-sm">
                 Clean test videos: AUROC {f3(main.all.clean.auroc)} (released {f3(cond.original.all.clean.auroc)}),
                 false alarms {pct(main.all.clean["fpr@0.5"])}, fakes caught {pct(main.all.clean["tpr@0.5"])}.
-                {main.fsh?.auroc != null && <> FaceShifter, never seen by DFD-FCG: AUROC {f3(main.fsh.auroc)} (released {f3(cond.original.fsh.auroc)}).</>}
+                {main.fsh?.auroc != null && <> FaceShifter, never seen by DFD-FCG: AUROC {f3(main.fsh.auroc)} (released {f3(cond.original.fsh.auroc)}),
+                  but fewer of its fakes pass the threshold ({pct(main.fsh["tpr@0.5"])} vs {pct(cond.original.fsh["tpr@0.5"])}).</>}
                 {main.dfdc?.auroc != null && <> DFDC, another dataset: AUROC {f3(main.dfdc.auroc)} (released {f3(cond.original.dfdc?.auroc)}).</>}
               </div>
             )}

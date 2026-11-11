@@ -17,12 +17,15 @@ OUT = ROOT / "results" / "figures"
 ORDER = ["clean", "RE_0", "CS_3", "CC_3", "BW_3", "GNC_3", "GB_1", "GB_3", "GB_5",
          "JPEG_1", "JPEG_3", "JPEG_5", "VC_1", "VC_3", "VC_5"]
 COL = {"original": "#d6336c", "platt": "#7950f2", "qshift": "#f08c00", "en": "#adb5bd",
-       "refit": "#495057", "d2d-pB2": "#2b8a3e", "d2d-pJ50": "#1098ad", "d2d-lr": "#82c91e"}
+       "refit": "#495057", "d2d-pB2": "#1098ad", "d2d-pJ50": "#66d9e8", "d2d-lr": "#82c91e",
+       "selfcal": "#2b8a3e", "selfcal+d2d": "#087f5b"}
 LABEL = {"original": "DFD-FCG (released)", "platt": "Platt recalibration", "qshift": "quality shift (face crop)",
          "en": "background-quality nulling", "refit": "augmented head re-fit",
-         "d2d-pB2": "Degrade-to-Detect, blur (ours)", "d2d-pJ50": "Degrade-to-Detect, JPEG (ours)",
-         "d2d-lr": "Degrade-to-Detect, learned (ours)"}
-MAIN = "d2d-pB2"
+         "d2d-pB2": "blur-probe contrast", "d2d-pJ50": "JPEG-probe contrast",
+         "d2d-lr": "probe responses, learned", "selfcal": "self-calibrated (ours)",
+         "selfcal+d2d": "self-calibrated + probe, strict (ours)"}
+MAIN = "selfcal"
+F2_METHODS = ["original", "platt", "qshift", "d2d-pB2", "selfcal", "selfcal+d2d"]
 
 plt.rcParams.update({"font.size": 10, "axes.spines.top": False, "axes.spines.right": False})
 
@@ -37,9 +40,9 @@ def f1_collapse(M):
     ax.plot(x, [o[c]["auroc"] for c in conds], "-o", color="#1971c2", label="AUROC (released)")
     ax.plot(x, [o[c]["fpr@0.5"] for c in conds], "-o", color=COL["original"], label="real videos called FAKE (released)")
     ax.plot(x, [n[c]["fpr@0.5"] for c in conds], "-o", color=COL[MAIN],
-            label="real videos called FAKE (Degrade-to-Detect, type unseen)")
+            label="real videos called FAKE (self-calibrated, type unseen)")
     ax.plot(x, [o[c]["tpr@0.5"] for c in conds], "--", color=COL["original"], alpha=.6, label="fakes caught (released)")
-    ax.plot(x, [n[c]["tpr@0.5"] for c in conds], "--", color=COL[MAIN], alpha=.6, label="fakes caught (Degrade-to-Detect)")
+    ax.plot(x, [n[c]["tpr@0.5"] for c in conds], "--", color=COL[MAIN], alpha=.6, label="fakes caught (self-calibrated)")
     ax.set_xticks(x, conds, rotation=45)
     ax.set_ylim(0, 1.02)
     ax.set_ylabel("rate")
@@ -53,7 +56,7 @@ def f1_collapse(M):
 def f2_methods(M):
     pc = M["per_condition"]
     conds = [c for c in ORDER if c in pc["original"]["all"] and c != "clean"]
-    methods = [m for m in COL if m in pc]
+    methods = [m for m in F2_METHODS if m in pc]
     w = 0.8 / len(methods)
     x = np.arange(len(conds))
     fig, axes = plt.subplots(2, 1, figsize=(12, 6), sharex=True)

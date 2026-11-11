@@ -15,6 +15,7 @@ export function Hero({ cond, summary, analysis }: { cond: Conditions; summary: S
   const ours = main?.lopo?.[worst] ?? main?.all?.[worst];
   const fr = analysis.fragility?.pB2?.by_input?.clean;
   const row = (m: string) => summary.table.find((r) => r.method === m && r.regime === "all");
+  const lopo = (m: string) => summary.table.find((r) => r.method === m && r.regime === "lopo");
   return (
     <header className="glow relative overflow-hidden border-b border-edge">
       <div className="mx-auto max-w-6xl px-5 pb-16 pt-24">
@@ -32,8 +33,11 @@ export function Hero({ cond, summary, analysis }: { cond: Conditions; summary: S
           blur, resampling and compression. At its own threshold the same degradations make it call up
           to <b className="text-fake">{pct(o[worst]["fpr@0.5"], 0)}</b> of authentic videos fake. Reading the model's exact
           explanation shows why: much of its evidence for REAL is fine natural detail, so removing detail adds FAKE evidence
-          to authentic videos, while the fragile evidence on fakes is lost. The model's own features also say <i>how</i> degraded a face is, and
-          a linear read-out of them, subtracted from each head, restores the threshold.
+          to authentic videos, while the fragile evidence on fakes is lost. The model's own features also encode how
+          degraded a face is; subtracting a linear read-out of them cuts false alarms under degradation
+          from <b className="text-fake">{pct(lopo("original")?.["deg_mean_fpr@0.5"] as number, 1)}</b> to{" "}
+          <b className="text-real">{pct(lopo(summary.main)?.["deg_mean_fpr@0.5"] as number, 1)}</b>, for degradation types it
+          never saw, at a cost in detection that is reported below.
         </p>
         <div className="mt-10 grid gap-4 md:grid-cols-4">
           <Kpi label="AUROC under degradation (released)" value={meanAuc.toFixed(3)} sub="looks robust" tone="accent" />

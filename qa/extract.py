@@ -170,9 +170,17 @@ def main():
     pending = deque()
     with Pool(args.workers, initializer=_low_priority) as pool:
         def drain(block):
+            """Consume finished videos in completion order; block only when too many are queued."""
             nonlocal done
-            while pending and (block or pending[0].ready() or len(pending) > 4):
-                vid, out = pending.popleft().get()
+            while pending:
+                ready = [f for f in pending if f.ready()]
+                if not ready:
+                    if not block and len(pending) <= 2 * args.workers:
+                        return
+                    ready = [pending[0]]
+                fut = ready[0]
+                pending.remove(fut)
+                vid, out = fut.get()
                 ti = time.time()
                 store = infer(vid, out)
                 done += 1

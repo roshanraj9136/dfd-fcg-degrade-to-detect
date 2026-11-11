@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts";
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts";
 import { Section, Toggle } from "../components/ui";
 
 export type DriftLayers = Record<string, { s: number[][]; t: number[] }>;
@@ -33,7 +33,7 @@ export function Heat({ s, t }: { s: number[][]; t: number[] }) {
   const all = [...s.flat(), ...t].map(Math.abs);
   const m = Math.max(1e-6, ...all);
   const cell = (v: number) => {
-    const a = Math.min(1, Math.abs(v) / m);
+    const a = Math.sqrt(Math.min(1, Math.abs(v) / m));
     return v >= 0 ? `rgba(244,114,182,${a})` : `rgba(52,211,153,${a})`;
   };
   return (
@@ -99,6 +99,7 @@ export function Anatomy({ analysis, layers }: { analysis: Analysis; layers: Drif
               <XAxis dataKey="region" stroke="#94a3b8" />
               <YAxis stroke="#94a3b8" />
               <Tooltip contentStyle={{ background: "#0e1528", border: "1px solid #1d2742" }} formatter={(v) => Number(v).toFixed(3)} />
+              <Legend />
               <Bar isAnimationActive={false} dataKey="spatial" fill="#38bdf8" />
               <Bar isAnimationActive={false} dataKey="temporal" fill="#a78bfa" />
             </BarChart>

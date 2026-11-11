@@ -8,5 +8,5 @@ dist/
 .env.*
 *.log
 # raw data, aligned faces and cached features live outside the repo (DFD_DATA)
-data/
+/data/
 *.pkl

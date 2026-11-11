@@ -29,7 +29,12 @@ const EARLIER = [
   { claim: "FAKE verdicts split evenly between branches", old: "50.4% spatial",
     test: (R: Rep) => { const s = R.FAKE.spatial_share_shapley; return { now: `spatial share on fakes: ${pct(s, 0)}`, holds: s > 0.4 && s < 0.6 }; } },
   { claim: "Spatial evidence on fakes sits on the eye region", old: "eyes region 47.7%",
-    test: (R: Rep) => { const [k, v] = top(R.FAKE.region_spatial_share); return { now: `top region: ${k} ${pct(v, 0)}`, holds: k === "eyes" }; } },
+    test: (R: Rep) => {
+      const [k, v] = top(R.FAKE.region_spatial_share);
+      const per = ["DF", "FS", "F2F", "NT"].filter((m) => m in R).map((m) => `${m} ${top(R[m].region_spatial_share)[0]}`);
+      const swaps = ["DF", "FS"].filter((m) => m in R).every((m) => top(R[m].region_spatial_share)[0] === "eyes");
+      return { now: `top region: ${k} ${pct(v, 0)} (${per.join(", ")})`, holds: k === "eyes" ? true : swaps ? null : false };
+    } },
   { claim: "Temporal evidence sits on the skin", old: "skin 41.9% (fake), 66.6% (real)",
     test: (R: Rep) => { const [a] = top(R.FAKE.region_temporal_share); const [b] = top(R.REAL.region_temporal_share);
       return { now: `top temporal region: fakes ${a}, reals ${b}`, holds: a === "skin" && b === "skin" ? true : a === "skin" || b === "skin" ? null : false }; } },

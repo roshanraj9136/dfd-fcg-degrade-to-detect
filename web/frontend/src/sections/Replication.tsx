@@ -17,9 +17,11 @@ export function Replication({ analysis, earlier }: { analysis: Analysis; earlier
   const groups = ["REAL", "DF", "F2F", "FS", "NT", "FSh"].filter((g) => g in R);
   const fp = analysis.fingerprints;
   return (
-    <Section id="replication" kicker="Finding 3" title="Our earlier two-video findings, re-tested at scale"
+    <Section id="replication" kicker="Finding 4" title="Our earlier two-video findings, re-tested at scale"
       lead={<>The first explainability study had one real and one fake video. Here every claim is re-measured on the
-        FF++ test split. Some hold, some do not; both outcomes are reported.</>}>
+        FF++ test split. Some hold, some do not; both outcomes are reported. A pattern the two videos could not show:
+        identity swaps (Deepfakes, FaceSwap) are caught on the eyes, expression re-enactments (Face2Face,
+        NeuralTextures) on the skin.</>}>
       <div className="card overflow-x-auto">
         <table className="grid-table min-w-[800px]">
           <thead><tr><th>earlier claim (2 videos)</th><th>earlier number</th><th>now (test split)</th><th>verdict</th></tr></thead>
