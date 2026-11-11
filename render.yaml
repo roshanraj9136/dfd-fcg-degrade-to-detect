@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: dfd-fcg-evidence-nulling-api
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: web/api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://dfd-fcg-evidence-nulling.vercel.app,http://localhost:5173

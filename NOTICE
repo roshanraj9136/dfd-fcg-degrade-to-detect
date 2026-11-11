@@ -1,0 +1,17 @@
+Third-party components and data
+
+The MIT license in LICENSE covers the code written for this repository only.
+
+DFD-FCG (Han, Huang, Hua, Chen; CVPR 2025), https://github.com/aiiu-lab/DFD-FCG
+  The model code and the released checkpoint are not included here. They are needed to
+  reproduce the results and are released by their authors for research purposes only.
+  src/preprocess/* of that repository (face alignment, robustness perturbations) is imported,
+  not copied.
+
+FaceForensics++ (Rössler et al., ICCV 2019), https://github.com/ondyari/FaceForensics
+  No videos or frames are redistributed. The results contain per-video scores and attribution
+  maps only. The two face crops in web/frontend/public/samples come from the sample videos
+  that the DFD-FCG repository itself ships (000.mp4, 000_003.mp4). The videos were read from a
+  public mirror of the c23 release; users must accept the FaceForensics++ terms of use.
+
+face-alignment (Bulat & Tzimiropoulos), https://github.com/1adrianb/face-alignment, BSD-3-Clause.

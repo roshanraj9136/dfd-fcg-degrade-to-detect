@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+dist/
+.vercel/
+.env
+.env.*
+*.log
+# raw data, aligned faces and cached features live outside the repo (DFD_DATA)
+data/
+*.pkl
