@@ -135,6 +135,16 @@ python tests/check_table.py      # every head logit == sum of its exact terms + 
 `python -m qa.run_video some_video.mp4 [--degrade GB_5]` runs the released model, the self-calibrated
 model and the probe on any video.
 
+### Deploying the website and API
+
+* **Database (Neon Postgres):** tables `kv` and `videos`; `NEON_OWNER_URL=... python web/api/seed.py` loads
+  `web/frontend/public/data`. The API only needs a read-only role.
+* **API (Render):** [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/roshanraj9136/dfd-fcg-degrade-to-detect)
+  uses `render.yaml` (root `web/api`); set `DATABASE_URL` to the read-only Neon URL when asked. The same FastAPI
+  app also runs on Vercel (`web/api/vercel.json`).
+* **Website (Vercel):** `web/frontend`, build `npm run build`, env `VITE_API_URL` = the API's base URL. All
+  results are also bundled as static JSON, so the site works without the API.
+
 ### Layout
 
 ```
