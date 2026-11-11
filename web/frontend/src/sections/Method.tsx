@@ -1,58 +1,66 @@
 import type { Conditions, Summary } from "../data";
-import { pct } from "../data";
+import { f3, pct } from "../data";
 import { Section } from "../components/ui";
 
 export function Method({ summary, cond }: { summary: Summary; cond: Conditions }) {
-  const curve = Object.entries(summary.lam_curve ?? {}).sort((a, b) => Number(a[0]) - Number(b[0]));
   const main = cond[summary.main];
+  const strict = cond[summary.strict];
+  const row = (m: string, reg = "all") => summary.table.find((r) => r.method === m && r.regime === reg);
+  const targets = Object.entries(summary.drift_targets ?? {}).filter(([c]) => c !== "clean").sort((a, b) => b[1][2] - a[1][2]);
   return (
-    <Section id="method" kicker="Contribution" title="Degrade-to-Detect: stress-test the input, read the response"
-      lead={<>A deepfake detector usually looks at a video once. We look twice: once at the input and once at a copy
-        we degrade ourselves with a fixed, mild probe. Authentic faces lose fine detail and the model moves towards
-        FAKE; manipulated faces lose their fragile artifacts and the model moves towards REAL. Subtracting the response
-        pushes each class back to its own side of the threshold.</>}>
+    <Section id="method" kicker="Contribution" title="Self-calibrated DFD-FCG: let the model measure its own degradation"
+      lead={<>The two LayerNorm heads of DFD-FCG read a 1024-d spatial and a 256-d temporal feature built from the frozen
+        CLIP encoder. Those same features encode blur, resampling and compression. We fit one linear read-out that
+        predicts, from them, how much spurious FAKE evidence the video's degradation has added to each head, and
+        subtract it. The released checkpoint is untouched.</>}>
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card space-y-4">
           <h3 className="text-lg font-semibold text-white">The rule</h3>
-          <div className="eq">r_h = d_h(probe(x)) − d_h(x)&nbsp;&nbsp;&nbsp; S_h = d_h − λ · r_h&nbsp;&nbsp;&nbsp; P = ⅓ Σ_h σ(S_h)</div>
-          <p className="text-sm muted">d_h is the logit difference (FAKE − REAL) of DFD-FCG's spatial, temporal and fusion
-            heads, exactly as in the released model, so the threshold stays at 0.5. The probe is a Gaussian blur with
-            σ = 2 px on the 150 × 150 aligned face (a JPEG q50 probe is also reported). One extra forward pass; no
-            retraining; nothing about the test video's history is needed.</p>
-          <h3 className="pt-2 text-lg font-semibold text-white">One number is fitted</h3>
-          <p className="text-sm muted">λ is chosen on FF++ <i>train-split</i> videos only ({summary.n.fit_real} real,{" "}
-            {summary.n.fit_fake} fake, degradation severities 2 and 4) to maximise balanced accuracy at 0.5. Selected:
-            <b className="text-white"> λ = {summary.lam}</b>. In the “unseen type” evaluation λ is re-selected without the
-            tested degradation type. A learned variant (logistic regression on the 3 logits and the 6 responses of two
-            probes, 10 numbers) is reported alongside.</p>
-          {curve.length > 0 && (
-            <table className="grid-table">
-              <thead><tr><th>λ</th>{curve.map(([l]) => <th key={l}>{l}</th>)}</tr></thead>
-              <tbody><tr><td className="muted">train-split balanced acc.</td>{curve.map(([l, v]) => <td key={l} className={Number(l) === summary.lam ? "text-real" : ""}>{pct(v)}</td>)}</tr></tbody>
-            </table>
-          )}
+          <div className="eq">ĝ = W · standardise([y_s, y_t]) + b&nbsp;&nbsp;&nbsp; d′_h = d_h − ĝ_h&nbsp;&nbsp;&nbsp; P = ⅓ Σ_h σ(d′_h)</div>
+          <p className="text-sm muted">d_h is the logit difference (FAKE − REAL) of the spatial, temporal and fusion heads,
+            P is the paper's own fusion, so the threshold stays at 0.5.</p>
+          <h3 className="pt-2 text-lg font-semibold text-white">What it is trained to predict</h3>
+          <p className="text-sm muted">For a training clip under condition c, the target is the average shift that c
+            causes on <i>real</i> training videos (paired: degraded minus clean), 0 for clean, and it is the same target
+            for real and fake clips. The read-out therefore learns “which degradation is this, how strong”, never “is this
+            fake”. Ridge regression, α = {summary.alpha}, fitted on {summary.n.fit_real} real and {summary.n.fit_fake} fake
+            FF++ <i>train-split</i> videos at severities 2 and 4 (tests use 1, 3, 5).</p>
+          <table className="grid-table">
+            <thead><tr><th>condition (training)</th><th>spatial</th><th>temporal</th><th>fusion</th></tr></thead>
+            <tbody>{targets.slice(0, 8).map(([c, v]) => (
+              <tr key={c}><td className="font-mono">{c}</td>{v.map((x, i) => <td key={i}>{x >= 0 ? "+" : ""}{x.toFixed(2)}</td>)}</tr>
+            ))}</tbody>
+          </table>
+          <p className="text-xs muted">Largest targets: the spurious evidence each condition adds to an authentic video, in logits.</p>
         </div>
-        <div className="card space-y-4">
-          <h3 className="text-lg font-semibold text-white">Why it is an extension of DFD-FCG, not a new model</h3>
-          <ul className="list-disc space-y-2 pl-5 text-sm muted">
-            <li>It uses the released checkpoint unchanged and the paper's own three heads and fusion rule.</li>
-            <li>It was found through the exact additive explanation of those heads (our earlier work): the per-term
-              changes under degradation showed that the evidence for REAL and for FAKE react oppositely.</li>
-            <li>It answers the gap in the paper's robustness study, which measures AUROC only: the response restores
-              a usable threshold under degradation instead of only ranking.</li>
-            <li>The response is itself an explanation: for every verdict we report whether the evidence collapsed
-              (fragile, typical of manipulation) or grew (fine detail removed, typical of authentic video).</li>
-          </ul>
-          {main && (
-            <div className="rounded-xl border border-real/30 bg-real/5 p-4 text-sm">
-              Clean test videos: AUROC {main.all.clean.auroc?.toFixed(3)} (released {cond.original.all.clean.auroc?.toFixed(3)}),
-              false alarms {pct(main.all.clean["fpr@0.5"])}, fakes caught {pct(main.all.clean["tpr@0.5"])}. FaceShifter, a
-              manipulation DFD-FCG never saw: AUROC {main.fsh.auroc?.toFixed(3)} (released {cond.original.fsh.auroc?.toFixed(3)}).
-            </div>
-          )}
-          <p className="text-xs muted">Closest prior idea: RIGID (He et al., 2024) compares foundation-model embeddings of an
-            image and its noised copy to detect generated images without training. Here the probe response is read off a
-            trained video deepfake detector's own decision heads, and used to repair its calibration.</p>
+        <div className="space-y-6">
+          <div className="card space-y-3">
+            <h3 className="text-lg font-semibold text-white">Strict mode: add the blur probe</h3>
+            <div className="eq">d″_h = d′_h − {summary.strict_lam} · ( d_h(blur(x)) − d_h(x) )</div>
+            <p className="text-sm muted">Finding 2 as a decision aid: one extra forward pass on the face blurred by 2 px. It
+              lowers false alarms further at a cost in detection, so it is an operating mode, not a free gain.
+              {strict && row(summary.strict) && <> Degraded conditions: false alarms {pct(row(summary.strict)?.["deg_mean_fpr@0.5"] as number)},
+                fakes caught {pct(row(summary.strict)?.["deg_mean_tpr@0.5"] as number)}.</>}</p>
+          </div>
+          <div className="card space-y-3">
+            <h3 className="text-lg font-semibold text-white">Why it is an extension of DFD-FCG</h3>
+            <ul className="list-disc space-y-2 pl-5 text-sm muted">
+              <li>It keeps the released checkpoint, its three heads and its fusion rule.</li>
+              <li>It was found through the exact additive explanation of those heads (our earlier work), which showed
+                where degradation enters the decision.</li>
+              <li>It answers the gap in the paper's robustness study, which reports AUROC only: the threshold becomes usable
+                under degradation, not only the ranking.</li>
+              <li>Every verdict now comes with an estimate of how much of it is due to video quality.</li>
+            </ul>
+            {main && (
+              <div className="rounded-xl border border-real/30 bg-real/5 p-4 text-sm">
+                Clean test videos: AUROC {f3(main.all.clean.auroc)} (released {f3(cond.original.all.clean.auroc)}),
+                false alarms {pct(main.all.clean["fpr@0.5"])}, fakes caught {pct(main.all.clean["tpr@0.5"])}.
+                {main.fsh?.auroc != null && <> FaceShifter, never seen by DFD-FCG: AUROC {f3(main.fsh.auroc)} (released {f3(cond.original.fsh.auroc)}).</>}
+                {main.dfdc?.auroc != null && <> DFDC, another dataset: AUROC {f3(main.dfdc.auroc)} (released {f3(cond.original.dfdc?.auroc)}).</>}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Section>

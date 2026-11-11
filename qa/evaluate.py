@@ -74,6 +74,27 @@ def conds_of(kind):
     return [f"{kind}_{lv}" for lv in TEST_LEVELS[kind]]
 
 
+def matched(v, deg_conds, fprs=(0.05, 0.10, 0.20)):
+    """Best mean detection rate over degraded conditions at a mean false-alarm budget, with ONE
+    global threshold swept on the test data (threshold-free comparison of cross-condition calibration)."""
+    best = {f: 0.0 for f in fprs}
+    for th in np.linspace(0.01, 0.99, 197):
+        fr, tr = [], []
+        for c in deg_conds:
+            k = v["cond"] == c
+            if not k.any():
+                continue
+            y, s = v["label"][k], v["score"][k]
+            fr.append((s[y == 0] >= th).mean())
+            tr.append((s[y == 1] >= th).mean())
+        if not fr:
+            continue
+        for f in fprs:
+            if np.mean(fr) <= f:
+                best[f] = max(best[f], float(np.mean(tr)))
+    return {f"tpr@mfpr{int(100 * f):02d}": b for f, b in best.items()}
+
+
 def run(T, methods=None):
     methods = methods or all_methods()
     fit = T["split"] == "fit"
@@ -97,8 +118,14 @@ def run(T, methods=None):
         for c in sorted(set(v["cond"])):
             k = v["cond"] == c
             r["all"][c] = metrics(v["label"][k], v["score"][k], taus)
+        deg_conds = [c for kk in KINDS for c in conds_of(kk)]
+        r["matched_all"] = matched(v, deg_conds)
         vf = video_level(T, test_fsh, M.predict(T, test_fsh))
         r["fsh"] = metrics(vf["label"], vf["score"], taus)
+        cross = (T["split"] == "cross") & (T["cond"] == "clean")
+        if cross.any() and len(set(T["label"][cross])) == 2:
+            vc = video_level(T, cross, M.predict(T, cross))
+            r["dfdc"] = metrics(vc["label"], vc["score"], taus)
         r["pooled_all"] = metrics(v["label"], v["score"], taus)
         r["per_method_clean"] = {
             mm: metrics(np.r_[np.zeros((v["label"][(v["cond"] == "clean") & (v["method"] == "REAL")]).size), np.ones(((v["cond"] == "clean") & (v["method"] == mm)).sum())],
@@ -108,13 +135,17 @@ def run(T, methods=None):
         # ---------------- regime: leave-one-perturbation-out ----------------
         if M.name in ("original",):
             r["lopo"] = r["all"]
+            r["matched_lopo"] = r["matched_all"]
             continue
+        lopo_score = np.full(len(T["vid"]), np.nan)
         for kind in KINDS:
             fm = fit & ~np.char.startswith(T["cond"].astype(str), kind + "_")   # type K unseen
             M.fit(T, fm)
             taus_k = {"0.5": 0.5, "tau5": fit_tau(M, T, fm)}
             tm = test_core & np.isin(T["cond"], conds_of(kind))
-            vk = video_level(T, tm, M.predict(T, tm))
+            pk = M.predict(T, tm)
+            lopo_score[tm] = pk
+            vk = video_level(T, tm, pk)
             for c in conds_of(kind):
                 k = vk["cond"] == c
                 if k.any():
@@ -122,6 +153,8 @@ def run(T, methods=None):
         for c in ("clean", "RE_0"):
             if c in r["all"]:
                 r["lopo"][c] = r["all"][c]
+        lm = test_core & np.isfinite(lopo_score)
+        r["matched_lopo"] = matched(video_level(T, lm, lopo_score[lm]), deg_conds)
     return res
 
 
@@ -170,6 +203,7 @@ def run_cv(T, methods=None, k=5):
                 oof[m0] = np.nan
             m = base & np.isfinite(oof)
             v = video_level(T, m, oof[m])
+            r["matched_" + regime] = matched(v, [c for kk in KINDS for c in conds_of(kk)])
             for c in sorted(set(v["cond"])):
                 kk = v["cond"] == c
                 r[regime][c] = metrics(v["label"][kk], v["score"][kk], {"0.5": 0.5, "tau5": 0.5})
@@ -201,11 +235,20 @@ def summarise(res):
                 row[f"deg_mean_{key}"] = float(np.mean(vals))
                 row[f"deg_worst_{key}"] = float(np.max(vals) if key.startswith("fpr") or key == "ece" else np.min(vals))
             row["n_conds_fpr05_over_50pct"] = int(sum(m["fpr@0.5"] > 0.5 for m in ms))
+            mk = {"all": "matched_all", "lopo": "matched_lopo", "cv_all": "matched_cv_all",
+                  "cv_lopo": "matched_cv_lopo"}.get(regime)
+            if mk and mk in r:
+                row.update(r[mk])
             if regime == "all":
                 row["pooled_auroc"] = r["pooled_all"]["auroc"]
                 row["pooled_bacc@0.5"] = r["pooled_all"]["bacc@0.5"]
                 row["fsh_auroc"] = r["fsh"]["auroc"]
                 row["fsh_tpr@0.5"] = r["fsh"]["tpr@0.5"]
+                if "dfdc" in r:
+                    row["dfdc_auroc"] = r["dfdc"]["auroc"]
+                    row["dfdc_bacc@0.5"] = r["dfdc"]["bacc@0.5"]
+                    row["dfdc_fpr@0.5"] = r["dfdc"]["fpr@0.5"]
+                    row["dfdc_tpr@0.5"] = r["dfdc"]["tpr@0.5"]
             if regime == "cv_all":
                 row["pooled_auroc"] = r["cv_pooled"]["auroc"]
                 row["pooled_bacc@0.5"] = r["cv_pooled"]["bacc@0.5"]
@@ -224,8 +267,8 @@ def main():
     out.mkdir(exist_ok=True)
     json.dump(dict(per_condition=res, summary=summary), open(out / "metrics.json", "w"), indent=1)
     keys = ["method", "regime", "clean_auroc", "clean_fpr05", "clean_tpr05", "deg_mean_auroc", "deg_mean_fpr@0.5",
-            "deg_worst_fpr@0.5", "deg_mean_tpr@0.5", "deg_mean_bacc@0.5", "deg_mean_fpr@tau5",
-            "deg_mean_tpr@tau5", "pooled_auroc", "pooled_bacc@0.5"]
+            "deg_worst_fpr@0.5", "deg_mean_tpr@0.5", "deg_mean_bacc@0.5", "tpr@mfpr05", "tpr@mfpr10", "tpr@mfpr20",
+            "pooled_auroc", "fsh_auroc", "dfdc_auroc", "dfdc_bacc@0.5"]
     print(" | ".join(keys))
     for row in summary:
         print(" | ".join(f"{row.get(k):.3f}" if isinstance(row.get(k), float) else str(row.get(k, "")) for k in keys))

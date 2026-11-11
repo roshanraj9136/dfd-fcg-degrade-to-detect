@@ -10,8 +10,12 @@ DFD-FCG (Han, Huang, Hua, Chen; CVPR 2025), https://github.com/aiiu-lab/DFD-FCG
 
 FaceForensics++ (Rössler et al., ICCV 2019), https://github.com/ondyari/FaceForensics
   No videos or frames are redistributed. The results contain per-video scores and attribution
-  maps only. The two face crops in web/frontend/public/samples come from the sample videos
+  maps only. The face crops in web/frontend/public/samples come from the two sample videos
   that the DFD-FCG repository itself ships (000.mp4, 000_003.mp4). The videos were read from a
   public mirror of the c23 release; users must accept the FaceForensics++ terms of use.
+
+DFDC (Dolhansky et al., 2020), https://ai.meta.com/datasets/dfdc/
+  80 videos of training part 0 were read from a public mirror for a cross-dataset check.
+  Only scores and attribution maps are published; the DFDC terms of use apply.
 
 face-alignment (Bulat & Tzimiropoulos), https://github.com/1adrianb/face-alignment, BSD-3-Clause.

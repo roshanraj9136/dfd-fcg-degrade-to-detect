@@ -1,41 +1,52 @@
 import type { Analysis } from "./Anatomy";
-import type { Conditions } from "../data";
+import type { Summary } from "../data";
 import { pct } from "../data";
 import { Section } from "../components/ui";
 
-export function Negative({ analysis, cond }: { analysis: Analysis; cond: Conditions }) {
+export function Negative({ analysis, summary }: { analysis: Analysis; summary: Summary }) {
   const tr = analysis.geometry.transfer_unseen;
-  const deg = Object.keys(cond.original.all).filter((c) => c !== "clean" && c !== "RE_0");
-  const mean = (m: string, k: "fpr@0.5" | "tpr@0.5") => cond[m] ? deg.reduce((s, c) => s + (cond[m].lopo[c]?.[k] ?? 0), 0) / deg.length : NaN;
   const g = analysis.geometry as unknown as Record<string, { cos_mean_drift_vs_forgery: number }>;
+  const row = (m: string, reg = "all") => summary.table.find((r) => r.method === m && r.regime === reg);
+  const cmp = (m: string) => [row(m)?.["tpr@mfpr05"], row(m)?.["tpr@mfpr10"], row(m)?.["tpr@mfpr20"]] as number[];
+  const o = cmp("original"), d = cmp("d2d-pB2"), s = cmp(summary.main);
   return (
-    <Section id="negative" kicker="What did not work" title="Correcting with an image-quality estimate fails"
-      lead={<>Our first idea was to estimate image quality from the pixels around the face (a face manipulation never
-        changes them) and subtract the evidence that quality predicts. It does not work, and the reason is informative.</>}>
+    <Section id="negative" kicker="What did not work" title="Two ideas that failed, and why"
+      lead={<>Both are reported because the reasons explain the result that did work.</>}>
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="card text-sm muted space-y-3">
-          <p>Eight blur, noise, blocking and colour descriptors of the background, regressed on the paired change of
-            every exact term of {analysis.en?.n_pairs?.toLocaleString()} real training clips. On real test videos the
-            prediction explains only this share of the logit change of a degradation type it was not fitted on (R²):</p>
+        <div className="card space-y-3 text-sm muted">
+          <h3 className="text-lg font-semibold text-white">1 · Quality from the background</h3>
+          <p>A face manipulation never touches the pixels around the face, so we measured blur, noise, blocking and colour
+            there and regressed every exact term's shift on them ({analysis.en?.n_pairs?.toLocaleString()} paired real
+            training clips). For a degradation type it was not fitted on, the prediction explains this share (R²) of the
+            logit shift on real test videos:</p>
           <table className="grid-table">
             <thead><tr><th>unseen type</th><th>spatial</th><th>temporal</th><th>fusion</th></tr></thead>
             <tbody>{Object.keys(tr).map((k) => (
               <tr key={k}><td className="font-mono">{k}</td>{(["s", "t", "a"] as const).map((h) => <td key={h}>{tr[k][h].logit_drift_explained.toFixed(2)}</td>)}</tr>
             ))}</tbody>
           </table>
-          <p>Background sharpness varies far more between videos (focus, depth of field, camera) than within a video under
-            compression, so it does not tell how much detail the face has lost.</p>
+          <p>Background sharpness varies far more between videos (focus, depth of field, camera) than within a video
+            under compression. The model's own features, which see the face, do much better.</p>
+          <p>Removing the degradation direction from the attribution alone also fails: degradation and forgery push the
+            terms the same way (cosine of the mean drift with the forgery direction: spatial {g.s?.cos_mean_drift_vs_forgery?.toFixed(2)},
+            temporal {g.t?.cos_mean_drift_vs_forgery?.toFixed(2)}, fusion {g.a?.cos_mean_drift_vs_forgery?.toFixed(2)}).</p>
         </div>
-        <div className="card text-sm muted space-y-3">
-          <p>Removing the degradation direction from the attribution itself also fails, because degradation and
-            forgery push the terms in similar directions: cosine between the mean degradation drift and the mean forgery
-            direction is spatial {g.s?.cos_mean_drift_vs_forgery?.toFixed(2)}, temporal {g.t?.cos_mean_drift_vs_forgery?.toFixed(2)},
-            fusion {g.a?.cos_mean_drift_vs_forgery?.toFixed(2)}.</p>
-          <p>Averaged over degraded test conditions (type unseen): background-quality nulling gives false alarms{" "}
-            {pct(mean("en", "fpr@0.5"))} and catches {pct(mean("en", "tpr@0.5"))} of fakes, against{" "}
-            {pct(mean("original", "fpr@0.5"))} / {pct(mean("original", "tpr@0.5"))} for the released model.</p>
-          <p className="text-slate-300">What does separate the two is not <i>how degraded</i> a video is but <i>how its
-            evidence reacts</i> to further degradation. That is the idea behind Degrade-to-Detect.</p>
+        <div className="card space-y-3 text-sm muted">
+          <h3 className="text-lg font-semibold text-white">2 · The blur probe as the fix</h3>
+          <p>On clean video the probe response separates real from fake almost perfectly, so subtracting it looked like a
+            free correction. At the 0.5 threshold it does cut false alarms, but at an equal false-alarm budget it detects no
+            more fakes than simply moving the released threshold:</p>
+          <table className="grid-table">
+            <thead><tr><th>detection at mean false alarms ≤</th><th>5%</th><th>10%</th><th>20%</th></tr></thead>
+            <tbody>
+              <tr><td>released, threshold moved</td>{o.map((x, i) => <td key={i}>{pct(x)}</td>)}</tr>
+              <tr><td>blur probe contrast</td>{d.map((x, i) => <td key={i}>{pct(x)}</td>)}</tr>
+              <tr className="bg-real/5"><td className="text-real">self-calibrated</td>{s.map((x, i) => <td key={i}>{pct(x)}</td>)}</tr>
+            </tbody>
+          </table>
+          <p>Once a video is degraded, much of the fine detail is already gone: real videos respond less to the probe and
+            fake videos respond more, so the gap that made the probe so informative on clean video shrinks. The probe stays
+            useful as an explanation of each verdict and as the optional strict mode.</p>
         </div>
       </div>
     </Section>

@@ -67,6 +67,8 @@ def select():
 
 
 def local_video(row):
+    if row.get("repo"):
+        return DATA / "hf_dfdc" / row["hf_path"]
     return DATA / "hf" / row["hf_path"]
 
 

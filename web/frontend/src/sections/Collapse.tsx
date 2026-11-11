@@ -18,7 +18,7 @@ export function Collapse({ cond, summary }: { cond: Conditions; summary: Summary
     tpr: cond.original.all[c]["tpr@0.5"],
     tpr_null: ours?.[regime]?.[c]?.["tpr@0.5"],
   })), [cond, conds, regime, ours]);
-  const methods = Object.keys(cond).filter((m) => m !== "original");
+  const methods = ["platt", "qshift", "d2d-pB2", "selfcal", "selfcal+d2d"].filter((m) => m in cond);
   const bars = conds.filter((c) => c !== "clean").map((c) => {
     const row: Record<string, number | string> = { cond: c };
     for (const m of ["original", ...methods]) row[m] = (m === "original" ? cond[m].all : cond[m][regime])?.[c]?.["fpr@0.5"] ?? 0;
@@ -32,7 +32,7 @@ export function Collapse({ cond, summary }: { cond: Conditions; summary: Summary
         moves while the share of real videos called FAKE climbs with every blur, resampling or compression step.</>}>
       <div className="card">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm muted">Released model (pink/blue) and Degrade-to-Detect (green), threshold 0.5</div>
+          <div className="text-sm muted">Released model (pink/blue) and self-calibrated (green), threshold 0.5</div>
           <Toggle value={regime} onChange={setRegime} options={[
             { value: "lopo", label: "rule never saw this degradation type" },
             { value: "all", label: "rule fitted on all types (other severities)" }]} />
@@ -46,11 +46,11 @@ export function Collapse({ cond, summary }: { cond: Conditions; summary: Summary
               formatter={(v) => pct(Number(v))} />
             <Legend />
             <ReferenceLine y={0.05} stroke="#fbbf24" strokeDasharray="4 4" />
-            <Line dataKey="auroc" name="AUROC (released)" stroke="#38bdf8" strokeWidth={2.5} dot />
-            <Line dataKey="fpr" name="Real videos called FAKE (released)" stroke="#f472b6" strokeWidth={2.5} dot />
-            <Line dataKey="fpr_null" name="Real videos called FAKE (Degrade-to-Detect)" stroke="#34d399" strokeWidth={2.5} dot />
-            <Line dataKey="tpr_null" name="Fakes caught (Degrade-to-Detect)" stroke="#34d399" strokeDasharray="5 4" dot={false} />
-            <Line dataKey="tpr" name="Fakes caught (released)" stroke="#f472b6" strokeDasharray="5 4" dot={false} />
+            <Line isAnimationActive={false} dataKey="auroc" name="AUROC (released)" stroke="#38bdf8" strokeWidth={2.5} dot />
+            <Line isAnimationActive={false} dataKey="fpr" name="Real videos called FAKE (released)" stroke="#f472b6" strokeWidth={2.5} dot />
+            <Line isAnimationActive={false} dataKey="fpr_null" name="Real videos called FAKE (self-calibrated)" stroke="#34d399" strokeWidth={2.5} dot />
+            <Line isAnimationActive={false} dataKey="tpr_null" name="Fakes caught (self-calibrated)" stroke="#34d399" strokeDasharray="5 4" dot={false} />
+            <Line isAnimationActive={false} dataKey="tpr" name="Fakes caught (released)" stroke="#f472b6" strokeDasharray="5 4" dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -64,7 +64,7 @@ export function Collapse({ cond, summary }: { cond: Conditions; summary: Summary
             <Tooltip contentStyle={{ background: "#0e1528", border: "1px solid #1d2742" }} formatter={(v) => pct(Number(v))} />
             <Legend />
             {["original", ...methods].map((m) => (
-              <Bar key={m} dataKey={m} name={METHOD_LABEL[m] ?? m} fill={METHOD_COLOR[m] ?? "#888"} />
+              <Bar isAnimationActive={false} key={m} dataKey={m} name={METHOD_LABEL[m] ?? m} fill={METHOD_COLOR[m] ?? "#888"} />
             ))}
           </BarChart>
         </ResponsiveContainer>

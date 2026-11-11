@@ -283,7 +283,8 @@ def fragility(T):
     from qa.extract import PROBES_RUN
     from sklearn.metrics import roc_auc_score
     out, arrays = {}, {}
-    test = (T["split"] == "test") & np.isin(T["method"], ["REAL"] + CORE + ["FSh"])
+    test = (np.isin(T["split"], ["test", "cross"])
+            & np.isin(T["method"], ["REAL"] + CORE + ["FSh", "DFDC_R", "DFDC_F"]))
     for pr in PROBES_RUN:
         ok = np.isfinite(T[f"probe:{pr}:d"]).all(1)
         o = out[pr] = {"by_input": {}}
@@ -301,9 +302,22 @@ def fragility(T):
                 auroc_minus_response_fusion=float(roc_auc_score(lab, -rv[:, 2])),
                 auroc_minus_response_mean=float(roc_auc_score(lab, -rv.mean(1))),
                 frac_fakes_drop=float((rv[lab == 1, 2] < 0).mean()), frac_reals_rise=float((rv[lab == 0, 2] >= 0).mean()))
+        # cross-dataset (DFDC), clean
+        m = ok & (T["split"] == "cross") & (T["cond"] == "clean")
+        if m.any() and len(set(T["label"][m])) == 2:
+            idx = np.where(m)[0]
+            r = (T[f"probe:{pr}:d"][idx] - T["d"][idx]).astype(float)
+            rv, vids = vmean(T, idx, r)
+            dv, _ = vmean(T, idx, T["d"][idx].astype(float))
+            lab = np.array([T["label"][T["vid"] == v][0] for v in vids])
+            o["dfdc"] = dict(real_mean=rv[lab == 0].mean(0).round(4).tolist(), fake_mean=rv[lab == 1].mean(0).round(4).tolist(),
+                             auroc_minus_response_fusion=float(roc_auc_score(lab, -rv[:, 2])),
+                             auroc_released=float(roc_auc_score(lab, sig(dv).mean(1))),
+                             n_real=int((lab == 0).sum()), n_fake=int((lab == 1).sum()))
         # anatomy on clean inputs: per term and per region, reals vs fakes (and per manipulation method)
         m = test & ok & (T["cond"] == "clean")
-        for grp, methods in [("REAL", ["REAL"]), ("FAKE", CORE)] + [(mm, [mm]) for mm in CORE + ["FSh"]]:
+        groups = [("REAL", ["REAL"]), ("FAKE", CORE)] + [(mm, [mm]) for mm in CORE + ["FSh", "DFDC_R", "DFDC_F"]]
+        for grp, methods in groups:
             idx = np.where(m & np.isin(T["method"], methods))[0]
             if not len(idx):
                 continue

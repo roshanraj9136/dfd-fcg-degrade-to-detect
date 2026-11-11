@@ -42,7 +42,7 @@ const EARLIER = [
 ];
 
 const NAV = [["collapse", "Collapse"], ["fragility", "Fragility"], ["anatomy", "Anatomy"], ["method", "Method"],
-  ["results", "Results"], ["explorer", "Explorer"], ["replication", "Replication"], ["negative", "Negative result"], ["api", "API"]];
+  ["results", "Results"], ["explorer", "Explorer"], ["replication", "Replication"], ["negative", "Negative results"], ["api", "API"]];
 
 export default function App() {
   const [d, setD] = useState<{ cond: Conditions; summary: Summary; analysis: Analysis; layers: DriftLayers; videos: VideoIndex[] } | null>(null);
@@ -57,7 +57,7 @@ export default function App() {
     <div>
       <nav className="fixed inset-x-0 top-0 z-50 border-b border-edge bg-ink/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
-          <a href="#" className="font-semibold text-white">Degrade-to-Detect <span className="muted font-normal">for DFD-FCG</span></a>
+          <a href="#" className="font-semibold text-white">Fake, or just compressed? <span className="muted font-normal">DFD-FCG, self-calibrated</span></a>
           <div className="hidden gap-4 text-sm md:flex">
             {NAV.map(([id, label]) => <a key={id} href={`#${id}`} className="muted hover:text-white">{label}</a>)}
           </div>
@@ -75,7 +75,7 @@ export default function App() {
           <Results cond={d.cond} summary={d.summary} />
           <Explorer videos={d.videos} summary={d.summary} />
           <Replication analysis={d.analysis} earlier={EARLIER} />
-          <Negative analysis={d.analysis} cond={d.cond} />
+          <Negative analysis={d.analysis} summary={d.summary} />
           <Playground />
           <footer className="border-t border-edge">
             <div className="mx-auto max-w-6xl px-5 py-10 text-sm muted">

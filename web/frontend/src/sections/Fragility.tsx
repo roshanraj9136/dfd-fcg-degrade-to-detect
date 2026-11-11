@@ -20,12 +20,13 @@ export function Fragility({ analysis, layers }: { analysis: Analysis; layers: Dr
   const LR = layers[`frag:${pr}_REAL`], LF = layers[`frag:${pr}_FAKE`];
   const c0 = F.by_input.clean;
   return (
-    <Section id="fragility" kicker="Finding 2" title="Real and fake videos move in opposite directions"
-      lead={<>We applied one mild, known probe to the aligned face and measured how each head's evidence changed.
-        On clean videos the fake evidence collapses ({c0 ? `${pct(c0.frac_fakes_drop, 0)} of fakes drop` : ""}) while
-        authentic videos keep or gain FAKE evidence ({c0 ? `${pct(c0.frac_reals_rise, 0)} of reals rise` : ""}). The direction
-        of the response alone separates real from fake with AUROC {c0?.auroc_minus_response_fusion.toFixed(3)}. The same
-        mechanism explains the false alarms: the model has learned “fine natural detail = real”, and degradation removes it.</>}>
+    <Section id="fragility" kicker="Finding 2" title="Real and fake videos react differently to a blur"
+      lead={<>We applied one mild, known probe to the aligned face and measured how each head's evidence changed. On clean
+        videos authentic faces gain a lot of FAKE evidence ({c0 ? `fusion logit ${sgn(c0.real_mean[2])} on average; ${pct(c0.frac_reals_rise, 0)} of reals rise` : ""}),
+        manipulated faces do not ({c0 ? `${sgn(c0.fake_mean[2])}; ${pct(c0.frac_fakes_drop, 0)} of fakes drop` : ""}). The size of the
+        response alone separates real from fake with AUROC {c0?.auroc_minus_response_fusion.toFixed(3)}. The same mechanism explains
+        the false alarms: part of what the model treats as evidence of authenticity is fine natural detail, and every
+        degradation removes it.</>}>
       <div className="mb-4"><Toggle value={pr} onChange={setPr} options={probes.map((p) => ({ value: p, label: PROBE_LABEL[p] ?? p }))} /></div>
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card">
@@ -38,12 +39,12 @@ export function Fragility({ analysis, layers }: { analysis: Analysis; layers: Dr
               <ReferenceLine y={0} stroke="#64748b" />
               <Tooltip contentStyle={{ background: "#0e1528", border: "1px solid #1d2742" }} formatter={(v) => Number(v).toFixed(3)} />
               <Legend />
-              <Bar dataKey="real" name="real videos" fill="#34d399" />
-              <Bar dataKey="fake" name="fake videos" fill="#f472b6" />
+              <Bar isAnimationActive={false} dataKey="real" name="real videos" fill="#34d399" />
+              <Bar isAnimationActive={false} dataKey="fake" name="fake videos" fill="#f472b6" />
             </BarChart>
           </ResponsiveContainer>
-          <p className="mt-2 text-xs muted">The gap shrinks as the input is already degraded: once the fragile evidence is
-            gone, there is less left to collapse. AUROC of the response alone: {data.map((d) => `${d.cond} ${d.auc.toFixed(2)}`).join(" · ")}</p>
+          <p className="mt-2 text-xs muted">The gap shrinks as the input is already degraded: once fine detail is gone,
+            real faces have less to lose. AUROC of the response alone: {data.map((d) => `${d.cond} ${d.auc.toFixed(2)}`).join(" · ")}</p>
         </div>
         <div className="card">
           <div className="mb-3 text-sm muted">Mean response per head on clean videos, by manipulation method</div>
@@ -55,9 +56,9 @@ export function Fragility({ analysis, layers }: { analysis: Analysis; layers: Dr
               <ReferenceLine y={0} stroke="#64748b" />
               <Tooltip contentStyle={{ background: "#0e1528", border: "1px solid #1d2742" }} formatter={(v) => Number(v).toFixed(3)} />
               <Legend />
-              <Bar dataKey="s" name="spatial" fill="#38bdf8" />
-              <Bar dataKey="t" name="temporal" fill="#a78bfa" />
-              <Bar dataKey="a" name="fusion" fill="#fbbf24" />
+              <Bar isAnimationActive={false} dataKey="s" name="spatial" fill="#38bdf8" />
+              <Bar isAnimationActive={false} dataKey="t" name="temporal" fill="#a78bfa" />
+              <Bar isAnimationActive={false} dataKey="a" name="fusion" fill="#fbbf24" />
             </BarChart>
           </ResponsiveContainer>
           <p className="mt-2 text-xs muted">FaceShifter (FSh) was never seen by DFD-FCG in training. {groups.filter((g) => g !== "REAL").map((g) =>
@@ -71,7 +72,7 @@ export function Fragility({ analysis, layers }: { analysis: Analysis; layers: Dr
             <Heat s={LR.s} t={LR.t} />
           </div>
           <div>
-            <div className="mb-2 text-sm muted">… and of <b className="text-fake">fake</b> videos. Green cells: FAKE evidence removed.</div>
+            <div className="mb-2 text-sm muted">… and of <b className="text-fake">fake</b> videos. Pink: FAKE evidence added, green: removed.</div>
             <Heat s={LF.s} t={LF.t} />
           </div>
         </div>

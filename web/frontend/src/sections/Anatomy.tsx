@@ -89,7 +89,7 @@ export function Anatomy({ analysis, layers }: { analysis: Analysis; layers: Drif
               <XAxis dataKey="head" stroke="#94a3b8" />
               <YAxis stroke="#94a3b8" />
               <Tooltip contentStyle={{ background: "#0e1528", border: "1px solid #1d2742" }} formatter={(v) => Number(v).toFixed(3)} />
-              <Bar dataKey="v">{heads.map((h) => <Cell key={h.head} fill={h.v >= 0 ? "#f472b6" : "#34d399"} />)}</Bar>
+              <Bar isAnimationActive={false} dataKey="v">{heads.map((h) => <Cell key={h.head} fill={h.v >= 0 ? "#f472b6" : "#34d399"} />)}</Bar>
             </BarChart>
           </ResponsiveContainer>
           <div className="mb-2 mt-4 text-sm muted">Change by face region (patch maps)</div>
@@ -99,8 +99,8 @@ export function Anatomy({ analysis, layers }: { analysis: Analysis; layers: Drif
               <XAxis dataKey="region" stroke="#94a3b8" />
               <YAxis stroke="#94a3b8" />
               <Tooltip contentStyle={{ background: "#0e1528", border: "1px solid #1d2742" }} formatter={(v) => Number(v).toFixed(3)} />
-              <Bar dataKey="spatial" fill="#38bdf8" />
-              <Bar dataKey="temporal" fill="#a78bfa" />
+              <Bar isAnimationActive={false} dataKey="spatial" fill="#38bdf8" />
+              <Bar isAnimationActive={false} dataKey="temporal" fill="#a78bfa" />
             </BarChart>
           </ResponsiveContainer>
         </div>

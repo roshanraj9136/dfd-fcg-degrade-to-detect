@@ -14,18 +14,16 @@ Rules
   platt        Platt scaling of logit(P_final) on clean fit videos                 (needs fakes)
   qshift       ridge from face-crop quality descriptors to the head logits of REAL fit videos,
                subtract the predicted offset                                         (reals only)
-  en           EVIDENCE NULLING (ours). Learn, from paired clean/degraded REAL videos, how
-               degradation moves every exact attribution term as a function of
-               BACKGROUND-referenced quality (pixels outside the face, which a face
-               manipulation never touches):  Delta c ~= W Delta phi(q_bg).
-               At test time remove that predicted evidence:
-                   c' = c - W (phi(q_bg) - mean phi_clean-real),   d'_h = sum_k c'_h[k] + const_h
-               Reals only; no fake video and no clean reference of the test video are needed.
-  en-face      ablation: the same with face-crop quality (entangled with the forgery)
-  en-proj      ablation: project the attribution onto the top drift direction and remove it
-               (no quality signal; shows that attribution alone cannot separate the two)
+  en           background-quality nulling (a negative result, kept for the record): learn, from
+               paired clean/degraded REAL videos, how every exact attribution term moves as a
+               function of quality measured OUTSIDE the face, and subtract the prediction
   refit        logistic regression on all 240 terms, trained on fit videos under every
                training condition                                                    (needs fakes)
+  d2d-*        Degrade-to-Detect probe contrast: d - lam * (d(probe(x)) - d(x))
+  d2d-lr       logistic regression on d and the responses to two probes
+  selfcal      SELF-CALIBRATED DFD-FCG (ours): a ridge read-out of the model's own head inputs
+               predicts the spurious evidence the video's degradation adds; it is subtracted
+  selfcal+d2d  the same with the blur-probe contrast on top (strict operating mode)
 """
 import numpy as np
 from sklearn.linear_model import LogisticRegression, Ridge
@@ -298,4 +296,48 @@ class ProbeLR:
 
 def all_methods():
     return [Original(), Platt(), QShift(), EvidenceNulling(), Refit(),
-            ProbeContrast("pB2"), ProbeContrast("pJ50"), ProbeLR()]
+            ProbeContrast("pB2"), ProbeContrast("pJ50"), ProbeLR(), SelfCal(), SelfCal(probe_after=True)]
+
+
+class SelfCal:
+    """
+    Self-calibrated DFD-FCG (ours). The frozen-CLIP side-network features that DFD-FCG reads
+    (y_s, y_t: the inputs of its LayerNorm heads) also encode how degraded the face is. A ridge
+    read-out on those features predicts the SPURIOUS evidence a degradation adds, and it is
+    subtracted from every head:   d'_h = d_h - g_h(y_s, y_t).
+
+    The target is class-agnostic: for a training row under condition c the target is the mean
+    paired drift (degraded - clean) of REAL training videos under c (0 for clean), for real AND
+    fake rows alike. So g learns "which condition is this", never "is this fake".
+    Optionally the probe contrast is applied on top (probe_after=True).
+    """
+
+    def __init__(self, alpha=1000.0, probe_after=False, lam=0.5):
+        self.alpha, self.probe_after, self.lam = alpha, probe_after, lam
+        self.name = "selfcal+d2d" if probe_after else "selfcal"
+
+    @staticmethod
+    def feats(T, mask):
+        return np.concatenate([T["y_s"][mask], T["y_t"][mask]], 1).astype(np.float64)
+
+    def fit(self, T, fit_mask):
+        src, dst = pairs(T, fit_mask & (T["label"] == 0))
+        tgt = {"clean": np.zeros(3)}
+        for c in set(T["cond"][dst]):
+            k = T["cond"][dst] == c
+            tgt[c] = (T["d"][dst][k] - T["d"][src][k]).astype(np.float64).mean(0)
+        rows = fit_mask & np.isin(T["cond"], list(tgt))
+        X = self.feats(T, rows)
+        self.sc = StandardScaler().fit(X)
+        self.reg = Ridge(alpha=self.alpha).fit(self.sc.transform(X), np.stack([tgt[c] for c in T["cond"][rows]]))
+        self.targets = {c: v.tolist() for c, v in tgt.items()}
+        return self
+
+    def drift(self, T, mask):
+        return self.reg.predict(self.sc.transform(self.feats(T, mask)))
+
+    def predict(self, T, mask):
+        d = T["d"][mask].astype(np.float64) - self.drift(T, mask)
+        if self.probe_after:
+            d = d - self.lam * np.nan_to_num(response(T, "pB2", mask))
+        return p_from_d(d)

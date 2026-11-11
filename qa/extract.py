@@ -40,7 +40,7 @@ def load_feats(vid):
 PROBES_RUN = ["pB2", "pJ50"]       # test-time probes evaluated for every input condition
 
 
-def wanted_conditions(row, clean_only_methods=("FSh",)):
+def wanted_conditions(row, clean_only_methods=("FSh", "DFDC_R", "DFDC_F")):
     base = ["clean"] if row["method"] in clean_only_methods else \
         conditions("fit" if row["split"] == "fit" else "test")
     return base + [f"{c}+{p}" for c in base for p in PROBES_RUN]
@@ -93,13 +93,14 @@ def priority_order(rows):
     keyed = []
     for g, rs in groups.items():
         for i, r in enumerate(rs):
-            keyed.append(((r["method"] == "FSh", r["split"] != "demo", (i + 0.5) / len(rs)), r))
+            late = r["method"] in ("FSh", "DFDC_R", "DFDC_F")
+            keyed.append(((late, r["split"] != "demo", (i + 0.5) / len(rs)), r))
     return [r for _, r in sorted(keyed, key=lambda x: x[0])]
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--splits", nargs="+", default=["demo", "test", "fit"])
+    ap.add_argument("--splits", nargs="+", default=["demo", "test", "fit", "cross"])
     ap.add_argument("--methods", nargs="+", default=None)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--limit", type=int, default=None)
