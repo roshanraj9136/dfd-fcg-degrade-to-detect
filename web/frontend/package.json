@@ -1,5 +1,5 @@
 {
-  "name": "dfd-fcg-evidence-nulling",
+  "name": "dfd-fcg-degrade-to-detect",
   "private": true,
   "version": "1.0.0",
   "type": "module",

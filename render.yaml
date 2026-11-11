@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: dfd-fcg-evidence-nulling-api
+    name: dfd-fcg-degrade-to-detect-api
     runtime: python
     region: singapore
     plan: free
@@ -14,4 +14,4 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: ALLOWED_ORIGINS
-        value: https://dfd-fcg-evidence-nulling.vercel.app,http://localhost:5173
+        value: https://dfd-fcg-degrade-to-detect.vercel.app,http://localhost:5173

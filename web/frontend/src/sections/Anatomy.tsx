@@ -15,11 +15,21 @@ export type Analysis = {
   };
   counterfactual: { n_false_alarms: number; false_alarms_fixed: number; mean_nuisance_share_in_false_alarms: number | null };
   fingerprints: { n_videos: number; classes: string[]; chance: number; accuracy_explanation: number; accuracy_logits_only: number; confusion: number[][] };
+  fragility: Record<string, Fragility>;
+  en: { n_pairs: number; descriptors: string[] };
+};
+export type FragGroup = {
+  n_clips: number; mean_response: number[]; query: Record<string, number>; region_spatial: Record<string, number>;
+  region_temporal: Record<string, number>; shallow_deep_spatial: number[]; shallow_deep_temporal: number[];
+};
+export type Fragility = Record<string, FragGroup> & {
+  by_input: Record<string, { real_mean: number[]; fake_mean: number[]; auroc_minus_response_fusion: number;
+    auroc_minus_response_mean: number; frac_fakes_drop: number; frac_reals_rise: number }>;
 };
 
 const PARTS = ["lips", "skin", "eyes", "nose"];
 
-function Heat({ s, t }: { s: number[][]; t: number[] }) {
+export function Heat({ s, t }: { s: number[][]; t: number[] }) {
   const all = [...s.flat(), ...t].map(Math.abs);
   const m = Math.max(1e-6, ...all);
   const cell = (v: number) => {
@@ -56,7 +66,7 @@ export function Anatomy({ analysis, layers }: { analysis: Analysis; layers: Drif
   }));
   const heads = Object.entries(d.delta_d).map(([k, v]) => ({ head: k, v }));
   return (
-    <Section id="anatomy" kicker="Finding 2" title="Where the false evidence enters the model"
+    <Section id="anatomy" kicker="Finding 3" title="Where the false evidence enters the model"
       lead={<>DFD-FCG's decision is an exact sum of per-layer, per-component and per-patch contributions (our earlier
         work). Comparing each real test video with its own degraded copy shows exactly which terms the degradation
         changes. Pink cells add FAKE evidence to an authentic video.</>}>

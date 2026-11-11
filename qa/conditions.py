@@ -110,24 +110,34 @@ def shift_M(M, x0, y0):
 
 def build(video_path, prep, vid, conds, tmp_root=None):
     """
-    Returns {cond: (crops_rgb (n_needed,150,150,3) uint8, roi_gray list for blockiness)}.
+    Returns {cond: (crops_rgb (n_needed,150,150,3) uint8, roi_gray list, roi_bgr list)}.
+
+    A condition may carry a test-time probe, e.g. "JPEG_5+pB2": the input condition is built
+    first and the probe (qa/probes.py) is then applied to the aligned face crops.
     """
+    from qa import probes as P
     frames, _ = read_frames(video_path, MAX_FRAMES)
     fps = int(prep["fps"])
     needed, Ms, offs, roi = prep["needed"], prep["M"], prep["off"], prep["roi"]
     x0, y0, x1, y1 = roi
-    res = {}
+    res, base_cache = {}, {}
     tmp_root = tmp_root or str(DATA / "tmp")
     os.makedirs(tmp_root, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=tmp_root) as tmpdir:
         for cond in conds:
-            if cond == "clean":
-                src = [np.ascontiguousarray(frames[i][y0:y1, x0:x1]) for i in needed]
-            else:
-                rf = degraded_roi_frames(frames, fps, roi, vid, cond, tmpdir)
-                src = [rf[i] for i in needed]
-            crops = np.stack([cv2.cvtColor(crop(s, shift_M(M, x0, y0), off), cv2.COLOR_BGR2RGB)
-                              for s, M, off in zip(src, Ms, offs)])
-            grays = [cv2.cvtColor(s, cv2.COLOR_BGR2GRAY) for s in src]
+            base, _, probe = cond.partition("+")
+            if base not in base_cache:
+                if base == "clean":
+                    src = [np.ascontiguousarray(frames[i][y0:y1, x0:x1]) for i in needed]
+                else:
+                    rf = degraded_roi_frames(frames, fps, roi, vid, base, tmpdir)
+                    src = [rf[i] for i in needed]
+                crops = np.stack([cv2.cvtColor(crop(s, shift_M(M, x0, y0), off), cv2.COLOR_BGR2RGB)
+                                  for s, M, off in zip(src, Ms, offs)])
+                grays = [cv2.cvtColor(s, cv2.COLOR_BGR2GRAY) for s in src]
+                base_cache[base] = (crops, grays, src)
+            crops, grays, src = base_cache[base]
+            if probe:
+                crops = P.apply(probe, crops)
             res[cond] = (crops, grays, src)
     return res

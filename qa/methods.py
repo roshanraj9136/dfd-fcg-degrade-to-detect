@@ -215,6 +215,87 @@ class Refit:
         return self.lr.predict_proba(self.sc.transform(X))[:, 1]
 
 
+# --------------------------------------------------------------------------------------------
+#  Degrade-to-Detect (ours): stress-test the input with a known probe and use the response
+# --------------------------------------------------------------------------------------------
+def response(T, probe, mask=None):
+    """r_h = d_h(probe(x)) - d_h(x) for every row (NaN where the probe was not computed)."""
+    r = T[f"probe:{probe}:d"].astype(np.float64) - T["d"].astype(np.float64)
+    return r if mask is None else r[mask]
+
+
+def has_probe(T, probes):
+    ok = np.ones(len(T["vid"]), bool)
+    for p in probes:
+        ok &= np.isfinite(T[f"probe:{p}:d"]).all(1)
+    return ok
+
+
+class ProbeContrast:
+    """
+    Training-free:  S_h = d_h - lam * r_h,   P = mean_h sigma(S_h).
+    Fake evidence is fragile (a mild blur removes it, r_h < 0) while real videos are stable or
+    move towards FAKE (r_h >= 0), so subtracting the response pushes each class away from the
+    threshold. lam is chosen on the FIT split only (max mean balanced accuracy at 0.5).
+    """
+
+    def __init__(self, probe="pB2", lam=None, grid=(0.0, 0.25, 0.5, 0.75, 1.0, 1.5)):
+        self.probe, self.lam, self.grid = probe, lam, grid
+        self.name = f"d2d-{probe}"
+
+    def score(self, T, mask, lam):
+        d = T["d"][mask].astype(np.float64)
+        r = np.nan_to_num(response(T, self.probe, mask))
+        return p_from_d(d - lam * r)
+
+    def fit(self, T, fit_mask):
+        if self.lam is not None:
+            self.lam_ = self.lam
+            return self
+        m = fit_mask & has_probe(T, [self.probe])
+        best, self.curve = None, {}
+        for lam in self.grid:
+            s = self.score(T, m, lam)
+            accs = []
+            for c in set(T["cond"][m]):
+                k = T["cond"][m] == c
+                y = T["label"][m][k]
+                if len(set(y)) < 2:
+                    continue
+                accs.append(0.5 * ((s[k][y == 1] >= .5).mean() + (s[k][y == 0] < .5).mean()))
+            self.curve[lam] = float(np.mean(accs))
+            if best is None or self.curve[lam] > self.curve[best]:
+                best = lam
+        self.lam_ = best
+        return self
+
+    def predict(self, T, mask):
+        return self.score(T, mask, self.lam_)
+
+
+class ProbeLR:
+    """Logistic regression on the 3 head logits and the 3 x |probes| responses (fit split)."""
+
+    def __init__(self, probes=("pB2", "pJ50")):
+        self.probes = list(probes)
+        self.name = "d2d-lr"
+
+    def X(self, T, mask):
+        cols = [T["d"][mask].astype(np.float64)] + [np.nan_to_num(response(T, p, mask)) for p in self.probes]
+        return np.concatenate(cols, 1)
+
+    def fit(self, T, fit_mask):
+        m = fit_mask & has_probe(T, self.probes)
+        X = self.X(T, m)
+        self.sc = StandardScaler().fit(X)
+        self.lr = LogisticRegression(C=1.0, class_weight="balanced", max_iter=5000).fit(
+            self.sc.transform(X), T["label"][m])
+        return self
+
+    def predict(self, T, mask):
+        return self.lr.predict_proba(self.sc.transform(self.X(T, mask)))[:, 1]
+
+
 def all_methods():
-    return [Original(), Platt(), QShift(), EvidenceNulling(), EvidenceNulling(qkey="q"), Projection(),
-            Refit()]
+    return [Original(), Platt(), QShift(), EvidenceNulling(), Refit(),
+            ProbeContrast("pB2"), ProbeContrast("pJ50"), ProbeLR()]

@@ -19,7 +19,7 @@ def main():
     conn = connect(os.environ["NEON_OWNER_URL"], timeout=60)
     conn.run("begin")
     for key, fname in [("summary", "summary.json"), ("analysis", "analysis.json"),
-                       ("conditions", "conditions.json"), ("projection", "projection.json"),
+                       ("conditions", "conditions.json"), ("model", "model.json"),
                        ("example", "example.json"), ("drift_layers", "drift_layers.json")]:
         conn.run("insert into kv (key, value) values (:k, cast(:v as jsonb)) "
                  "on conflict (key) do update set value = excluded.value, updated_at = now()",

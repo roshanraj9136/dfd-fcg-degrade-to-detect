@@ -37,10 +37,13 @@ def load_feats(vid):
     return {}
 
 
+PROBES_RUN = ["pB2", "pJ50"]       # test-time probes evaluated for every input condition
+
+
 def wanted_conditions(row, clean_only_methods=("FSh",)):
-    if row["method"] in clean_only_methods:
-        return ["clean"]
-    return conditions("fit" if row["split"] == "fit" else "test")
+    base = ["clean"] if row["method"] in clean_only_methods else \
+        conditions("fit" if row["split"] == "fit" else "test")
+    return base + [f"{c}+{p}" for c in base for p in PROBES_RUN]
 
 
 def _work(args):

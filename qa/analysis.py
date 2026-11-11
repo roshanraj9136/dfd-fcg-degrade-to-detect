@@ -274,6 +274,62 @@ def fingerprints(T):
                 confusion=confusion_matrix(y, pred, labels=range(4)).tolist())
 
 
+# ------------------------------------------------------------------ F. fragility of the evidence
+def fragility(T):
+    """
+    How the model's evidence responds to a known test-time probe (blur / JPEG in crop space),
+    separately for real and fake videos, overall and per exact term / face region.
+    """
+    from qa.extract import PROBES_RUN
+    from sklearn.metrics import roc_auc_score
+    out, arrays = {}, {}
+    test = (T["split"] == "test") & np.isin(T["method"], ["REAL"] + CORE + ["FSh"])
+    for pr in PROBES_RUN:
+        ok = np.isfinite(T[f"probe:{pr}:d"]).all(1)
+        o = out[pr] = {"by_input": {}}
+        for cond in ["clean", "RE_0", "CS_3", "CC_3", "BW_3", "GNC_3", "GB_1", "GB_3", "GB_5",
+                     "JPEG_1", "JPEG_3", "JPEG_5", "VC_1", "VC_3", "VC_5"]:
+            m = test & ok & (T["cond"] == cond) & np.isin(T["method"], ["REAL"] + CORE)
+            if not m.any() or len(set(T["label"][m])) < 2:
+                continue
+            idx = np.where(m)[0]
+            r = (T[f"probe:{pr}:d"][idx] - T["d"][idx]).astype(float)
+            rv, vids = vmean(T, idx, r)
+            lab = np.array([T["label"][T["vid"] == v][0] for v in vids])
+            o["by_input"][cond] = dict(
+                real_mean=rv[lab == 0].mean(0).round(4).tolist(), fake_mean=rv[lab == 1].mean(0).round(4).tolist(),
+                auroc_minus_response_fusion=float(roc_auc_score(lab, -rv[:, 2])),
+                auroc_minus_response_mean=float(roc_auc_score(lab, -rv.mean(1))),
+                frac_fakes_drop=float((rv[lab == 1, 2] < 0).mean()), frac_reals_rise=float((rv[lab == 0, 2] >= 0).mean()))
+        # anatomy on clean inputs: per term and per region, reals vs fakes (and per manipulation method)
+        m = test & ok & (T["cond"] == "clean")
+        for grp, methods in [("REAL", ["REAL"]), ("FAKE", CORE)] + [(mm, [mm]) for mm in CORE + ["FSh"]]:
+            idx = np.where(m & np.isin(T["method"], methods))[0]
+            if not len(idx):
+                continue
+            ds = (T[f"probe:{pr}:cs_lq"][idx] - T["cs_lq"][idx]).mean(0)      # (24,4)
+            dt = (T[f"probe:{pr}:ct_l"][idx] - T["ct_l"][idx]).mean(0)        # (24,)
+            ps = np.zeros((len(idx), len(REGIONS)))
+            pt = np.zeros((len(idx), len(REGIONS)))
+            for n, i in enumerate(idx):
+                rm = rmap(T["vid"][i])
+                for k, rg in enumerate(REGIONS):
+                    ps[n, k] = (T[f"probe:{pr}:cs_patch"][i] - T["cs_patch"][i])[rm == rg].sum()
+                    pt[n, k] = (T[f"probe:{pr}:ct_patch"][i] - T["ct_patch"][i])[rm == rg].sum()
+            r = (T[f"probe:{pr}:d"][idx] - T["d"][idx]).astype(float)
+            pos = np.clip(T["cs_lq"][idx], 0, None).sum((1, 2))
+            o[grp] = dict(n_clips=int(len(idx)), mean_response=r.mean(0).round(4).tolist(),
+                          query=dict(zip(FACE_PARTS, ds.sum(0).round(4).tolist())),
+                          region_spatial=dict(zip(REGIONS, ps.mean(0).round(4).tolist())),
+                          region_temporal=dict(zip(REGIONS, pt.mean(0).round(4).tolist())),
+                          shallow_deep_spatial=[float(ds[:12].sum()), float(ds[12:].sum())],
+                          shallow_deep_temporal=[float(dt[:12].sum()), float(dt[12:].sum())],
+                          spatial_positive_evidence=float(pos.mean()))
+            arrays[f"frag_s_{pr}_{grp}"] = ds
+            arrays[f"frag_t_{pr}_{grp}"] = dt
+    return out, arrays
+
+
 def main():
     from qa.table import load
     T = load()
@@ -284,6 +340,8 @@ def main():
     en = EvidenceNulling().fit(T, T["split"] == "fit")
     out["counterfactual"] = counterfactual(T, en)
     out["fingerprints"] = fingerprints(T)
+    out["fragility"], frag_arrays = fragility(T)
+    arrays.update(frag_arrays)
     out["en"] = dict(n_pairs=en.n_pairs, descriptors=QB_NAMES[:7])
     # predicted vs measured drift per term (all-type fit) for the website / figures
     test_real = (T["split"] == "test") & (T["method"] == "REAL") & np.isfinite(T["q_bg"]).all(1)
@@ -298,7 +356,7 @@ def main():
     json.dump(out, open(ROOT / "results" / "analysis.json", "w"), indent=1)
     np.savez_compressed(ROOT / "results" / "arrays.npz", **arrays)
     print(json.dumps({k: out[k] for k in ["counterfactual", "fingerprints", "en"]}, indent=1))
-    print(json.dumps(out["geometry"], indent=1)[:3000])
+    print(json.dumps({p: v["by_input"] for p, v in out["fragility"].items()}, indent=1)[:4000])
 
 
 if __name__ == "__main__":

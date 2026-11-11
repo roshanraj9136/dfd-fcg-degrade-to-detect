@@ -16,11 +16,13 @@ from qa.config import ROOT  # noqa: E402
 OUT = ROOT / "results" / "figures"
 ORDER = ["clean", "RE_0", "CS_3", "CC_3", "BW_3", "GNC_3", "GB_1", "GB_3", "GB_5",
          "JPEG_1", "JPEG_3", "JPEG_5", "VC_1", "VC_3", "VC_5"]
-COL = {"original": "#d6336c", "platt": "#7950f2", "qshift": "#f08c00", "en": "#2b8a3e",
-       "en-face": "#1098ad", "en-proj": "#adb5bd", "refit": "#495057"}
+COL = {"original": "#d6336c", "platt": "#7950f2", "qshift": "#f08c00", "en": "#adb5bd",
+       "refit": "#495057", "d2d-pB2": "#2b8a3e", "d2d-pJ50": "#1098ad", "d2d-lr": "#82c91e"}
 LABEL = {"original": "DFD-FCG (released)", "platt": "Platt recalibration", "qshift": "quality shift (face crop)",
-         "en": "Evidence Nulling (ours)", "en-face": "EN, face-crop quality", "en-proj": "attribution projection",
-         "refit": "augmented head re-fit"}
+         "en": "background-quality nulling", "refit": "augmented head re-fit",
+         "d2d-pB2": "Degrade-to-Detect, blur (ours)", "d2d-pJ50": "Degrade-to-Detect, JPEG (ours)",
+         "d2d-lr": "Degrade-to-Detect, learned (ours)"}
+MAIN = "d2d-pB2"
 
 plt.rcParams.update({"font.size": 10, "axes.spines.top": False, "axes.spines.right": False})
 
@@ -31,13 +33,13 @@ def f1_collapse(M):
     x = np.arange(len(conds))
     fig, ax = plt.subplots(figsize=(10, 4))
     o = pc["original"]["all"]
-    n = pc["en"]["lopo"]
+    n = pc[MAIN]["lopo"]
     ax.plot(x, [o[c]["auroc"] for c in conds], "-o", color="#1971c2", label="AUROC (released)")
     ax.plot(x, [o[c]["fpr@0.5"] for c in conds], "-o", color=COL["original"], label="real videos called FAKE (released)")
-    ax.plot(x, [n[c]["fpr@0.5"] for c in conds], "-o", color=COL["en"],
-            label="real videos called FAKE (Evidence Nulling, type unseen)")
+    ax.plot(x, [n[c]["fpr@0.5"] for c in conds], "-o", color=COL[MAIN],
+            label="real videos called FAKE (Degrade-to-Detect, type unseen)")
     ax.plot(x, [o[c]["tpr@0.5"] for c in conds], "--", color=COL["original"], alpha=.6, label="fakes caught (released)")
-    ax.plot(x, [n[c]["tpr@0.5"] for c in conds], "--", color=COL["en"], alpha=.6, label="fakes caught (Evidence Nulling)")
+    ax.plot(x, [n[c]["tpr@0.5"] for c in conds], "--", color=COL[MAIN], alpha=.6, label="fakes caught (Degrade-to-Detect)")
     ax.set_xticks(x, conds, rotation=45)
     ax.set_ylim(0, 1.02)
     ax.set_ylabel("rate")
@@ -91,13 +93,56 @@ def f3_drift(arr):
     plt.close(fig)
 
 
+def f4_fragility(A, arr):
+    F = A.get("fragility", {})
+    if "pB2" not in F:
+        return
+    by = F["pB2"]["by_input"]
+    conds = [c for c in ORDER if c in by]
+    x = np.arange(len(conds))
+    fig, axes = plt.subplots(1, 2, figsize=(13, 3.8), gridspec_kw=dict(width_ratios=[2, 1]))
+    axes[0].bar(x - 0.2, [by[c]["real_mean"][2] for c in conds], 0.4, color="#2b8a3e", label="real videos")
+    axes[0].bar(x + 0.2, [by[c]["fake_mean"][2] for c in conds], 0.4, color="#d6336c", label="fake videos")
+    axes[0].axhline(0, color="k", lw=.6)
+    axes[0].set_xticks(x, conds, rotation=45)
+    axes[0].set_ylabel("change of fusion logit")
+    axes[0].set_title("Response to a 2-px blur of the aligned face, by input condition")
+    axes[0].legend(fontsize=8)
+    groups = [g for g in ["REAL", "DF", "F2F", "FS", "NT", "FSh"] if g in F["pB2"]]
+    v = np.array([F["pB2"][g]["mean_response"] for g in groups])
+    for k, (h, c) in enumerate(zip(["spatial", "temporal", "fusion"], ["#1971c2", "#7950f2", "#f08c00"])):
+        axes[1].bar(np.arange(len(groups)) + (k - 1) * 0.27, v[:, k], 0.27, color=c, label=h)
+    axes[1].axhline(0, color="k", lw=.6)
+    axes[1].set_xticks(range(len(groups)), ["real" if g == "REAL" else g for g in groups])
+    axes[1].set_title("Clean inputs, per head")
+    axes[1].legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(OUT / "f4_fragility.png", dpi=160)
+    plt.close(fig)
+    if "frag_s_pB2_REAL" in arr.files and "frag_s_pB2_FAKE" in arr.files:
+        fig, axes = plt.subplots(2, 1, figsize=(10, 4), sharex=True)
+        Ms = [np.vstack([arr[f"frag_s_pB2_{g}"].T, arr[f"frag_t_pB2_{g}"][None]]) for g in ["REAL", "FAKE"]]
+        vm = max(np.abs(M).max() for M in Ms)
+        for ax, M, g in zip(axes, Ms, ["real", "fake"]):
+            ax.imshow(M, cmap="PiYG_r", vmin=-vm, vmax=vm, aspect="auto")
+            ax.set_yticks(range(5), ["S lips", "S skin", "S eyes", "S nose", "temporal"], fontsize=8)
+            ax.set_title(f"{g} videos: change of each exact term under the blur probe (pink = towards FAKE)", fontsize=9)
+        axes[-1].set_xticks(range(24), range(1, 25), fontsize=7)
+        axes[-1].set_xlabel("CLIP layer")
+        fig.tight_layout()
+        fig.savefig(OUT / "f5_fragility_terms.png", dpi=160)
+        plt.close(fig)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     M = json.load(open(ROOT / "results" / "metrics.json"))
+    A = json.load(open(ROOT / "results" / "analysis.json"))
     arr = np.load(ROOT / "results" / "arrays.npz")
     f1_collapse(M)
     f2_methods(M)
     f3_drift(arr)
+    f4_fragility(A, arr)
     print("figures in", OUT)
 
 

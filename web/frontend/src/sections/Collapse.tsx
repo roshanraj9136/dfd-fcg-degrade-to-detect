@@ -9,14 +9,15 @@ const ORDER = ["clean", "RE_0", "CS_3", "CC_3", "BW_3", "GNC_3", "GB_1", "GB_3",
 export function Collapse({ cond, summary }: { cond: Conditions; summary: Summary }) {
   const [regime, setRegime] = useState<"lopo" | "all">("lopo");
   const conds = ORDER.filter((c) => c in cond.original.all);
+  const ours = cond[summary.main];
   const data = useMemo(() => conds.map((c) => ({
     cond: c,
     auroc: cond.original.all[c].auroc,
     fpr: cond.original.all[c]["fpr@0.5"],
-    fpr_null: cond.en?.[regime]?.[c]?.["fpr@0.5"],
+    fpr_null: ours?.[regime]?.[c]?.["fpr@0.5"],
     tpr: cond.original.all[c]["tpr@0.5"],
-    tpr_null: cond.en?.[regime]?.[c]?.["tpr@0.5"],
-  })), [cond, conds, regime]);
+    tpr_null: ours?.[regime]?.[c]?.["tpr@0.5"],
+  })), [cond, conds, regime, ours]);
   const methods = Object.keys(cond).filter((m) => m !== "original");
   const bars = conds.filter((c) => c !== "clean").map((c) => {
     const row: Record<string, number | string> = { cond: c };
@@ -31,10 +32,10 @@ export function Collapse({ cond, summary }: { cond: Conditions; summary: Summary
         moves while the share of real videos called FAKE climbs with every blur, resampling or compression step.</>}>
       <div className="card">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm muted">Released model (pink/blue) and Evidence Nulling (green), threshold 0.5</div>
+          <div className="text-sm muted">Released model (pink/blue) and Degrade-to-Detect (green), threshold 0.5</div>
           <Toggle value={regime} onChange={setRegime} options={[
-            { value: "lopo", label: "correction never saw this degradation type" },
-            { value: "all", label: "correction fitted on all types (other severities)" }]} />
+            { value: "lopo", label: "rule never saw this degradation type" },
+            { value: "all", label: "rule fitted on all types (other severities)" }]} />
         </div>
         <ResponsiveContainer width="100%" height={360}>
           <LineChart data={data} margin={{ left: 0, right: 20, top: 10, bottom: 10 }}>
@@ -47,8 +48,8 @@ export function Collapse({ cond, summary }: { cond: Conditions; summary: Summary
             <ReferenceLine y={0.05} stroke="#fbbf24" strokeDasharray="4 4" />
             <Line dataKey="auroc" name="AUROC (released)" stroke="#38bdf8" strokeWidth={2.5} dot />
             <Line dataKey="fpr" name="Real videos called FAKE (released)" stroke="#f472b6" strokeWidth={2.5} dot />
-            <Line dataKey="fpr_null" name="Real videos called FAKE (Evidence Nulling)" stroke="#34d399" strokeWidth={2.5} dot />
-            <Line dataKey="tpr_null" name="Fakes caught (Evidence Nulling)" stroke="#34d399" strokeDasharray="5 4" dot={false} />
+            <Line dataKey="fpr_null" name="Real videos called FAKE (Degrade-to-Detect)" stroke="#34d399" strokeWidth={2.5} dot />
+            <Line dataKey="tpr_null" name="Fakes caught (Degrade-to-Detect)" stroke="#34d399" strokeDasharray="5 4" dot={false} />
             <Line dataKey="tpr" name="Fakes caught (released)" stroke="#f472b6" strokeDasharray="5 4" dot={false} />
           </LineChart>
         </ResponsiveContainer>

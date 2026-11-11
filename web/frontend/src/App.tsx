@@ -10,6 +10,9 @@ import { Results } from "./sections/Results";
 import { Explorer } from "./sections/Explorer";
 import { Replication } from "./sections/Replication";
 import { Playground } from "./sections/Playground";
+import { Fragility } from "./sections/Fragility";
+import { Negative } from "./sections/Negative";
+import { REPO } from "./sections/Hero";
 import { Loading } from "./components/ui";
 
 type Rep = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -38,8 +41,8 @@ const EARLIER = [
         holds: Math.min(f.acc_spatial_only, f.acc_temporal_only, r.acc_spatial_only, r.acc_temporal_only) > 0.8 ? true : null }; } },
 ];
 
-const NAV = [["collapse", "Finding"], ["anatomy", "Anatomy"], ["method", "Method"], ["results", "Results"],
-  ["explorer", "Explorer"], ["replication", "Replication"], ["api", "API"]];
+const NAV = [["collapse", "Collapse"], ["fragility", "Fragility"], ["anatomy", "Anatomy"], ["method", "Method"],
+  ["results", "Results"], ["explorer", "Explorer"], ["replication", "Replication"], ["negative", "Negative result"], ["api", "API"]];
 
 export default function App() {
   const [d, setD] = useState<{ cond: Conditions; summary: Summary; analysis: Analysis; layers: DriftLayers; videos: VideoIndex[] } | null>(null);
@@ -54,7 +57,7 @@ export default function App() {
     <div>
       <nav className="fixed inset-x-0 top-0 z-50 border-b border-edge bg-ink/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
-          <a href="#" className="font-semibold text-white">Evidence Nulling <span className="muted font-normal">for DFD-FCG</span></a>
+          <a href="#" className="font-semibold text-white">Degrade-to-Detect <span className="muted font-normal">for DFD-FCG</span></a>
           <div className="hidden gap-4 text-sm md:flex">
             {NAV.map(([id, label]) => <a key={id} href={`#${id}`} className="muted hover:text-white">{label}</a>)}
           </div>
@@ -64,20 +67,22 @@ export default function App() {
       {!d && !err && <div className="mx-auto max-w-6xl p-24"><Loading /></div>}
       {d && (
         <>
-          <Hero cond={d.cond} summary={d.summary} />
+          <Hero cond={d.cond} summary={d.summary} analysis={d.analysis} />
           <Collapse cond={d.cond} summary={d.summary} />
+          <Fragility analysis={d.analysis} layers={d.layers} />
           <Anatomy analysis={d.analysis} layers={d.layers} />
-          <Method analysis={d.analysis} summary={d.summary} cond={d.cond} />
+          <Method summary={d.summary} cond={d.cond} />
           <Results cond={d.cond} summary={d.summary} />
           <Explorer videos={d.videos} summary={d.summary} />
           <Replication analysis={d.analysis} earlier={EARLIER} />
+          <Negative analysis={d.analysis} cond={d.cond} />
           <Playground />
           <footer className="border-t border-edge">
             <div className="mx-auto max-w-6xl px-5 py-10 text-sm muted">
               <p>Built on DFD-FCG by Han, Huang, Hua and Chen (CVPR 2025) and its released checkpoint (research use only).
                 Videos: FaceForensics++ (c23), used under its terms of use and not redistributed. Explainability engine:
                 {" "}<a className="text-accent" href="https://github.com/roshanraj9136/dfd-fcg-explainability">dfd-fcg-explainability</a>.</p>
-              <p className="mt-2">Roshan Raj · B.Tech project</p>
+              <p className="mt-2">Roshan Raj · B.Tech project · <a className="text-accent" href={REPO}>source code</a></p>
             </div>
           </footer>
         </>
