@@ -4,7 +4,7 @@ An extension of **DFD-FCG** (Han, Huang, Hua, Chen, *CVPR 2025*), the video deep
 frozen CLIP ViT-L/14. B.Tech project by Roshan Raj, building on our earlier exact-attribution study
 ([dfd-fcg-explainability](https://github.com/roshanraj9136/dfd-fcg-explainability)).
 
-**Website:** https://dfd-fcg-degrade-to-detect.vercel.app · **API:** https://dfd-fcg-degrade-to-detect-api.vercel.app/api/health
+**Website (Vercel):** https://dfd-fcg-degrade-to-detect.vercel.app · **API (Render):** https://dfd-fcg-degrade-to-detect-api.onrender.com/api/health · **Database:** Neon Postgres
 
 <!-- RESULTS-START -->
 ## Results at a glance
@@ -140,8 +140,9 @@ model and the probe on any video.
 * **Database (Neon Postgres):** tables `kv` and `videos`; `NEON_OWNER_URL=... python web/api/seed.py` loads
   `web/frontend/public/data`. The API only needs a read-only role.
 * **API (Render):** [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/roshanraj9136/dfd-fcg-degrade-to-detect)
-  uses `render.yaml` (root `web/api`); set `DATABASE_URL` to the read-only Neon URL when asked. The same FastAPI
-  app also runs on Vercel (`web/api/vercel.json`).
+  uses `render.yaml` (root `web/api`); set `DATABASE_URL` to the read-only Neon URL when asked. Live at
+  https://dfd-fcg-degrade-to-detect-api.onrender.com (free plan: the first request after idle takes up to a minute).
+  The same FastAPI app also runs on Vercel as a backup (`web/api/vercel.json`).
 * **Website (Vercel):** `web/frontend`, build `npm run build`, env `VITE_API_URL` = the API's base URL. All
   results are also bundled as static JSON, so the site works without the API.
 
