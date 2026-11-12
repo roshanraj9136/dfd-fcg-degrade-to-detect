@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import scores from "./scores.json";
+import websiteCheck from "./website_check.json";
 import { AttributionFig, Bars, BlurTestFig, FixFig, HeroFig, ModelArchFig, ScoreStrips, SystemFig } from "./figs";
 
 const LINKS = {
@@ -14,9 +15,9 @@ const LINKS = {
 };
 
 const NAV: [string, string][] = [
-  ["summary", "Summary"], ["architecture", "Architecture"], ["problem", "The problem"], ["why", "Why"],
-  ["found", "How I found it"], ["fix", "My fix"], ["results", "Results"], ["novelty", "Novelty"],
-  ["questions", "Questions"], ["script", "1-minute script"],
+  ["summary", "Summary"], ["architecture", "Architecture"], ["problem", "Problem"], ["why", "Why"],
+  ["found", "How I found it"], ["fix", "My fix"], ["results", "Results"], ["website-test", "Website test"], ["novelty", "Novelty"],
+  ["questions", "Questions"], ["script", "Script"],
 ];
 
 type S = Record<string, { real: number[]; fake: number[]; real_fix: number[]; fake_fix: number[] }>;
@@ -50,16 +51,16 @@ function Header() {
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-        <a href="#top" className="flex items-center gap-2 font-bold text-slate-900">
+        <a href="#top" className="flex shrink-0 items-center gap-2 whitespace-nowrap font-bold text-slate-900">
           <img src="/favicon.svg" alt="" className="h-7 w-7" /> Viva guide
         </a>
-        <nav className="hidden gap-1 lg:flex">
-          {NAV.map(([id, label]) => <a key={id} href={`#${id}`} className="rounded-lg px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900">{label}</a>)}
+        <nav className="hidden gap-0.5 xl:flex">
+          {NAV.map(([id, label]) => <a key={id} href={`#${id}`} className="whitespace-nowrap rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900">{label}</a>)}
         </nav>
-        <button className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm lg:hidden" onClick={() => setOpen(!open)}>Sections</button>
+        <button className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm xl:hidden" onClick={() => setOpen(!open)}>Sections</button>
       </div>
       {open && (
-        <nav className="grid grid-cols-2 gap-1 border-t border-slate-200 px-5 py-3 lg:hidden">
+        <nav className="grid grid-cols-2 gap-1 border-t border-slate-200 px-5 py-3 xl:hidden">
           {NAV.map(([id, label]) => <a key={id} href={`#${id}`} onClick={() => setOpen(false)} className="rounded-lg px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100">{label}</a>)}
         </nav>
       )}
@@ -358,7 +359,121 @@ function Results() {
         </ul>
       </Card>
       <p className="mt-4 text-sm text-slate-500">Every number: <a className="text-brand hover:underline" href={LINKS.tables}>results/tables.md</a> in the repository.</p>
+      <WebsiteCheck />
     </Section>
+  );
+}
+
+/* ------------------------------------------------------------------ the live website, tested on the paper's videos */
+type M = { acc: number; false_alarms?: number; caught?: number; balanced?: number; auroc?: number };
+type B = { n: number; n_fake: number; site_original: M; site_fix: M; site_strict: M; research_original: M; research_fix: M; same_verdict: number; mean_abs_diff: number };
+const WC = websiteCheck as unknown as {
+  videos: number; failed: number; ffpp: Record<"clean" | "GB_5" | "VC_5", B>; faceshifter: B; dfdc: B;
+  per_type: Record<string, { original: number; fix: number; blur_fix: number; n: number }>; two_face_mismatch: string[];
+};
+const pc = (v?: number) => (v == null ? "–" : `${(v * 100).toFixed(1)}%`);
+const OPTIONS: ["clean" | "GB_5" | "VC_5", string][] = [["clean", "Video as it is"], ["GB_5", "Strong blur added"], ["VC_5", "Heavy compression added"]];
+
+function WebsiteCheck() {
+  const c = WC.ffpp.clean, b = WC.ffpp.GB_5, v = WC.ffpp.VC_5, fs = WC.faceshifter, dd = WC.dfdc;
+  const rows: [string, keyof B, string][] = [
+    ["Original DFD-FCG", "site_original", "text-slate-700"],
+    ["Website answer (with my fix)", "site_fix", "text-brand font-semibold"],
+    ["Strict mode (fix + blur test)", "site_strict", "text-slate-700"],
+    ["Research pipeline, with my fix", "research_fix", "text-slate-500"],
+  ];
+  return (
+    <div id="website-test" className="scroll-mt-20">
+      <h3 className="mt-14 text-2xl font-bold text-slate-900">I tested the live website on the paper's videos</h3>
+      <p className="mt-2 max-w-3xl text-slate-600">
+        I ran the exact code behind the website, with the same settings as the live site, on all {WC.videos} test
+        videos: the FF++ test split ({c.n - c.n_fake} real, {c.n_fake} fake), {fs.n} FaceShifter fakes the model never
+        saw, and {dd.n} DFDC videos from another dataset. Each FF++ video was checked with all three website options.
+        {WC.failed === 0 ? " None of the checks failed." : ` ${WC.failed} checks failed.`}
+      </p>
+
+      <div className="mt-6 grid gap-5 md:grid-cols-3">
+        <Card>
+          <div className="text-sm font-bold uppercase tracking-wider text-slate-500">Normal videos</div>
+          <div className="mt-2 text-3xl font-extrabold text-real">{pc(c.site_fix.acc)}</div>
+          <p className="mt-2 text-sm text-slate-600">accuracy on FF++. {pc(c.site_fix.caught)} of fakes caught, {pc(c.site_fix.false_alarms)} of real videos wrongly called fake. AUROC {c.site_fix.auroc!.toFixed(3)}.</p>
+        </Card>
+        <Card>
+          <div className="text-sm font-bold uppercase tracking-wider text-slate-500">Blurry videos</div>
+          <div className="mt-2 text-3xl font-extrabold text-brand">{pc(b.site_original.false_alarms)} → {pc(b.site_fix.false_alarms)}</div>
+          <p className="mt-2 text-sm text-slate-600">real videos wrongly called fake, original detector → website. Accuracy {pc(b.site_original.acc)} → {pc(b.site_fix.acc)}.</p>
+        </Card>
+        <Card>
+          <div className="text-sm font-bold uppercase tracking-wider text-slate-500">Same as my research</div>
+          <div className="mt-2 text-3xl font-extrabold text-slate-900">{pc(c.same_verdict)}</div>
+          <p className="mt-2 text-sm text-slate-600">same verdict as the research pipeline on normal videos ({pc(b.same_verdict)} blurred, {pc(v.same_verdict)} compressed). Scores differ by {c.mean_abs_diff.toFixed(3)} on average.</p>
+        </Card>
+      </div>
+
+      <Card className="mt-6 overflow-x-auto p-0">
+        <table className="w-full min-w-[760px] text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+              <th className="px-5 py-3">FF++ test, {c.n} videos</th>
+              <th className="px-3 py-3 text-right">Accuracy</th>
+              <th className="px-3 py-3 text-right">Real called fake</th>
+              <th className="px-3 py-3 text-right">Fakes caught</th>
+              <th className="px-3 py-3 text-right">Balanced acc.</th>
+              <th className="px-5 py-3 text-right">AUROC</th>
+            </tr>
+          </thead>
+          <tbody>
+            {OPTIONS.map(([k, label]) => (
+              <Fragment key={k}>
+                <tr className="border-t border-slate-200 bg-white"><td colSpan={6} className="px-5 pb-1 pt-4 font-bold text-slate-900">{label}</td></tr>
+                {rows.map(([name, key, cls]) => {
+                  const x = WC.ffpp[k][key] as M;
+                  return (
+                    <tr key={name} className={key === "site_fix" ? "bg-brand-soft/60" : ""}>
+                      <td className={`px-5 py-1.5 ${cls}`}>{name}</td>
+                      <td className={`px-3 py-1.5 text-right tabular-nums ${cls}`}>{pc(x.acc)}</td>
+                      <td className={`px-3 py-1.5 text-right tabular-nums ${cls}`}>{pc(x.false_alarms)}</td>
+                      <td className={`px-3 py-1.5 text-right tabular-nums ${cls}`}>{pc(x.caught)}</td>
+                      <td className={`px-3 py-1.5 text-right tabular-nums ${cls}`}>{pc(x.balanced)}</td>
+                      <td className={`px-5 py-1.5 text-right tabular-nums ${cls}`}>{x.auroc?.toFixed(3) ?? "–"}</td>
+                    </tr>
+                  );
+                })}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+        <p className="px-5 pb-4 pt-3 text-xs text-slate-500">The website shows the blue row. Strict mode is printed under every website result. Grey: the research pipeline on the same videos, for comparison.</p>
+      </Card>
+
+      <Card className="mt-6 border-amber-200 bg-amber-50">
+        <div className="font-bold text-amber-800">The trade-offs, honestly</div>
+        <ul className="mt-3 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
+          <li>• <b>Fewer false alarms costs some caught fakes.</b> On strongly blurred video the website wrongly flags {pc(b.site_fix.false_alarms)} of real
+            videos instead of {pc(b.site_original.false_alarms)}, but catches {pc(b.site_fix.caught)} of fakes instead of {pc(b.site_original.caught)}.
+            The original only catches so many because it calls almost every blurry video fake.</li>
+          <li>• <b>Heavy compression is the weakest case.</b> False alarms drop only from {pc(v.site_original.false_alarms)} to {pc(v.site_fix.false_alarms)},
+            and fakes caught drop from {pc(v.site_original.caught)} to {pc(v.site_fix.caught)}.</li>
+          <li>• <b>Strict mode</b> gives the fewest false alarms ({pc(c.site_strict.false_alarms)} normal, {pc(b.site_strict.false_alarms)} blurred,
+            {" "}{pc(v.site_strict.false_alarms)} compressed) but catches fewer fakes ({pc(c.site_strict.caught)}, {pc(b.site_strict.caught)}, {pc(v.site_strict.caught)}).</li>
+          <li>• <b>A fake type it never saw</b> (FaceShifter, {fs.n} videos): caught {pc(fs.site_original.caught)} by the original and {pc(fs.site_fix.caught)} with
+            my fix (research pipeline: {pc(fs.research_original.caught)} → {pc(fs.research_fix.caught)}).</li>
+          <li>• <b>Another dataset</b> (DFDC, {dd.n} videos): accuracy {pc(dd.site_fix.acc)}, {pc(dd.site_fix.false_alarms)} false alarms, {pc(dd.site_fix.caught)} of
+            fakes caught, AUROC {dd.site_fix.auroc!.toFixed(3)}. DFD-FCG itself is weak here (research: AUROC {dd.research_fix.auroc!.toFixed(3)}).</li>
+          <li>• <b>Two people in the video.</b> In {WC.two_face_mismatch.length} of the {dd.n} DFDC videos two people sit side by side, and the website followed a
+            different person than the research pipeline. In 2 of those fakes the website said REAL where the research pipeline said FAKE, most likely
+            because it checked the person who was not swapped. This only affects videos with more than one face; the website asks for one clear face.</li>
+          <li className="md:col-span-2">• <b>By fake type</b> (fakes caught by the website, normal → strongly blurred):{" "}
+            {Object.entries(WC.per_type).map(([k, t], i) => (
+              <span key={k}>{i > 0 && " · "}{({ DF: "Deepfakes", F2F: "Face2Face", FS: "FaceSwap", NT: "NeuralTextures" } as Record<string, string>)[k]} {pc(t.fix)} → {pc(t.blur_fix)}</span>
+            ))}.</li>
+        </ul>
+      </Card>
+      <Say>I ran the live website's own code on all {WC.videos} test videos. On normal FF++ videos it is {pc(c.site_fix.acc)} accurate, and on blurry
+        videos it cuts wrongly accused real videos from {pc(b.site_original.false_alarms)} to {pc(b.site_fix.false_alarms)}. It agrees with my research
+        pipeline on {pc(c.same_verdict)} of videos. The price is that it catches fewer fakes on damaged video, and it is weaker on other datasets, as
+        DFD-FCG itself is.</Say>
+    </div>
   );
 }
 
@@ -464,9 +579,13 @@ const QA: [string, ReactNode][] = [
       videos are ahead.</>],
   ["Does the live checker give the same answer as your research pipeline?",
     <>It uses the same model, weights, alignment and add-on. To be fast on a CPU it looks for the face on every 12th frame
-      and computes landmarks on every 3rd frame (plus every frame the model reads), then smooths them the same way. On the two
-      sample videos the original DFD-FCG score is 0.354 vs 0.356 (real) and 0.934 vs 0.940 (deepfake), and the GPU and
-      CPU paths give the same verdicts.</>],
+      and computes landmarks on every 3rd frame (plus every frame the model reads), then smooths them the same way. I ran
+      the website's code on all 225 test videos: it gives the same verdict as the research pipeline on 99.2% of normal
+      FF++ videos (96.2% blurred, 95.4% compressed), and the scores differ by about 0.01 on average.</>],
+  ["How accurate is the website?",
+    <>On the FF++ test videos: 97.7% on normal video, 80.8% with strong blur (the original detector: 66.2%) and 77.7% with
+      heavy compression. On blurry video it wrongly accuses 7.1% of real videos instead of 61.4%, but catches 66.7% of
+      fakes instead of 98.3%. On DFDC, another dataset, it is 67.5%, because DFD-FCG itself is weak there.</>],
   ["How is this different from your earlier project?",
     <>The earlier project explained 2 videos. This one tests 275 videos under 15 conditions, finds a failure and its cause,
       fixes it, and re-tests the earlier claims (some hold, the “70.9% temporal” one does not).</>],
