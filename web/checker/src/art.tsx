@@ -152,3 +152,74 @@ export function Spinner({ className = "h-5 w-5" }: P) {
     </svg>
   );
 }
+
+type Clip = { start: number; end: number; p: number; faces: number[] };
+
+/** Fake score of every 3-second clip along the video (dot = middle of the clip), one line per person. */
+export function Timeline({ clips, seconds, shown = 1 }: { clips: Clip[]; seconds: number; shown?: number }) {
+  const W = 560, H = 200, L = 46, R = 18, T = 14, B = 34;
+  const tmax = Math.max(1, seconds, ...clips.map((c) => c.end));
+  const x = (t: number) => L + ((W - L - R) * t) / tmax;
+  const y = (p: number) => T + (H - T - B) * (1 - p);
+  const mid = (c: Clip) => (c.start + c.end) / 2;
+  const nf = clips[0]?.faces.length ?? 1;
+  const line = (ps: number[]) => ps.map((p, i) => `${i ? "L" : "M"}${x(mid(clips[i])).toFixed(1)} ${y(p).toFixed(1)}`).join(" ");
+  const ticks = Array.from({ length: Math.floor(tmax) + 1 }, (_, i) => i).filter((t) => tmax <= 12 || t % 2 === 0);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto w-full min-w-[460px] max-w-[700px]" role="img" aria-label="Fake score of each clip along the video">
+      <rect x={L} y={y(1)} width={W - L - R} height={y(0.5) - y(1)} fill="#fef2f2" rx="6" />
+      <rect x={L} y={y(0.5)} width={W - L - R} height={y(0) - y(0.5)} fill="#f0fdf4" rx="6" />
+      <line x1={L} x2={W - R} y1={y(0.5)} y2={y(0.5)} stroke="#94a3b8" strokeDasharray="5 4" />
+      <text x={L - 8} y={y(0.85)} fontSize="12" fill="#dc2626" textAnchor="end" fontWeight="600">fake</text>
+      <text x={L - 8} y={y(0.5) + 4} fontSize="11" fill="#94a3b8" textAnchor="end">50%</text>
+      <text x={L - 8} y={y(0.15)} fontSize="12" fill="#16a34a" textAnchor="end" fontWeight="600">real</text>
+      {ticks.map((t) => (
+        <g key={t}>
+          <line x1={x(t)} x2={x(t)} y1={y(0)} y2={y(0) + 5} stroke="#cbd5e1" />
+          <text x={x(t)} y={H - 10} fontSize="11" fill="#64748b" textAnchor="middle">{t} s</text>
+        </g>
+      ))}
+      {Array.from({ length: nf }, (_, f) => f).filter((f) => f !== shown - 1).map((f) => (
+        <path key={f} d={line(clips.map((c) => c.faces[f]))} fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeDasharray="6 5" />
+      ))}
+      <path d={line(clips.map((c) => c.p))} fill="none" stroke="#4f46e5" strokeWidth="3" strokeLinejoin="round" />
+      {clips.map((c, i) => (
+        <circle key={i} cx={x(mid(c))} cy={y(c.p)} r="7" fill={c.p >= 0.5 ? "#dc2626" : "#16a34a"} stroke="#fff" strokeWidth="2.5">
+          <title>{`${c.start.toFixed(1)}–${c.end.toFixed(1)} s: ${Math.round(c.p * 100)}% fake`}</title>
+        </circle>
+      ))}
+    </svg>
+  );
+}
+
+/** Every person the checker looked at, with their score; the one that decided the answer is highlighted. */
+export function People({ ps, shown }: { ps: number[]; shown: number }) {
+  const w = 120;
+  return (
+    <svg viewBox={`0 0 ${w * ps.length} 150`} className="h-36 w-auto" role="img" aria-label={`${ps.length} people checked`}>
+      {ps.map((p, i) => {
+        const on = i === shown - 1;
+        const col = p >= 0.5 ? "#dc2626" : "#16a34a";
+        const cx = w * i + w / 2;
+        return (
+          <g key={i} opacity={on ? 1 : 0.55}>
+            <circle cx={cx} cy="50" r="40" fill={on ? "#eef2ff" : "#f8fafc"} stroke={on ? "#4f46e5" : "#cbd5e1"} strokeWidth={on ? 4 : 2} />
+            <circle cx={cx} cy="40" r="14" fill="#fde7d6" stroke="#e0a982" strokeWidth="2" />
+            <path d={`M${cx - 24} 78c4-14 13-20 24-20s20 6 24 20`} fill="#fde7d6" stroke="#e0a982" strokeWidth="2" />
+            <text x={cx} y="114" textAnchor="middle" fontSize="13" fill="#334155" fontWeight="600">Person {i + 1}</text>
+            <text x={cx} y="134" textAnchor="middle" fontSize="13" fill={col} fontWeight="700">{Math.round(p * 100)}% fake</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/** Small badge icon: a check in a shield (sure) or a question mark (not sure). */
+export function SureIcon({ sure, className = "h-5 w-5" }: { sure: boolean; className?: string }) {
+  return sure ? (
+    <svg viewBox="0 0 24 24" className={className} {...stroke}><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></svg>
+  ) : (
+    <svg viewBox="0 0 24 24" className={className} {...stroke}><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6v.6" /><circle cx="12" cy="17" r=".6" fill="currentColor" /></svg>
+  );
+}

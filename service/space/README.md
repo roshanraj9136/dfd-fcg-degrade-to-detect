@@ -21,8 +21,11 @@ Backend of the website https://dfd-fcg-degrade-to-detect.vercel.app
 * Self-calibration (our add-on): a linear read-out of the model's own features estimates how much FAKE
   evidence blur and compression added to the video, and removes it. No retraining.
 * Blur test and a per-region evidence map as a short explanation.
-* Face finding runs on the Space's CPU; only the two DFD-FCG passes use ZeroGPU (about 2 s). When a visitor's
-  free GPU time is used up, those passes run on a CPU copy of the model instead (same scores, a few seconds slower).
+* Every clear face in the video is checked (up to 2 people; a swap can be on either), with 8 clips of 10 frames
+  from the first 10 seconds. The most suspicious face decides. A "sure / not sure" flag marks answers close to the line.
+* Face finding runs on the Space's CPU; only the DFD-FCG passes use ZeroGPU (the booked time grows with the number
+  of faces). When a visitor's free GPU time is used up, those passes run on a CPU copy of the model instead
+  (same scores, slower).
 
 API: `/analyze` (file, degrade = none | blur | compress) and `/health`, e.g. with `@gradio/client`.
 Uploaded videos are deleted right after the check; only anonymous numbers are logged.

@@ -4,7 +4,7 @@ An extension of **DFD-FCG** (Han, Huang, Hua, Chen, *CVPR 2025*), the video deep
 frozen CLIP ViT-L/14. B.Tech project by Roshan Raj, building on our earlier exact-attribution study
 ([dfd-fcg-explainability](https://github.com/roshanraj9136/dfd-fcg-explainability)).
 
-* **Video checker (Vercel):** https://dfd-fcg-degrade-to-detect.vercel.app · upload a face video, get REAL / FAKE and a short reason
+* **Video checker (Vercel):** https://dfd-fcg-degrade-to-detect.vercel.app · upload a face video, get REAL / FAKE, a short reason and a "sure / not sure" label (version 2: every person, 8 clips from 10 s; [accuracy study](results/accuracy_study.md))
 * **Viva guide (Vercel):** https://dfd-fcg-viva.vercel.app · the problem, the cause, the fix and the architecture in plain language
 * **Checker backend (Hugging Face ZeroGPU):** https://huggingface.co/spaces/roshan9136/dfd-fcg-checker
 * **Results API (Render):** https://dfd-fcg-degrade-to-detect-api.onrender.com/api/health · **Database:** Neon Postgres
@@ -142,8 +142,9 @@ model and the probe on any video.
 
 ```
 browser ── checker site (web/checker, Vercel) ──video──▶ Hugging Face Space, ZeroGPU (service/space)
-                                                           find face (CPU) → DFD-FCG + blur test (ZeroGPU, CPU fallback)
-                                                           → self-calibration → explanation
+                                                           find every face (CPU) → DFD-FCG on 8 clips per face + blur test
+                                                           (ZeroGPU, CPU fallback) → self-calibration → most suspicious face
+                                                           → "sure / not sure" + explanation
                                                            ◀── weights from a private HF model repo (research use only)
                                                            ──▶ Neon Postgres: anonymous log (table analyses)
 browser ── viva site (web/viva, Vercel) ──▶ results API (web/api, Render) ──read-only──▶ Neon Postgres (kv, videos)
@@ -154,12 +155,17 @@ browser ── viva site (web/viva, Vercel) ──▶ results API (web/api, Rend
   the private repo holding `weights.ckpt`, CLIP ViT-L/14 and the face-alignment weights) and `DATABASE_URL`
   (a Neon role that may only insert into and count `analyses`). API: `/analyze` (file, degrade = none | blur |
   compress) and `/health`, e.g. with `@gradio/client`. Face detection and alignment run on the Space's CPU; only
-  the two DFD-FCG passes (detector + blur test) book a ZeroGPU slot (`duration=15`, about 2 s used), which keeps
-  each visitor's free daily GPU quota for many checks. If ZeroGPU refuses (quota used up, no free GPU), the same
-  passes run on a CPU copy of the model loaded at startup: same scores, a few seconds slower. About 15–25 s per video.
+  the DFD-FCG passes (detector + blur test) book a ZeroGPU slot, with a duration that grows with the number of
+  passes (faces × clips). If ZeroGPU refuses (quota used up, no free GPU), the same passes run on a CPU copy of
+  the model loaded at startup: same scores, slower (about a minute per video).
+  **Version 2 settings** (`service/app/pipeline.py`, environment variables): `CLIPS=8`, `WINDOW_SEC=10` (8 clips
+  from the first 10 s), `MAX_FACES=2` (every clear face; the most suspicious decides), `FLIP_TTA=0`,
+  `CERT_MARGIN=0.16` ("not sure" when the corrected score is within 0.16 of 0.5). `CLIPS=2 WINDOW_SEC=0
+  MAX_FACES=1` reproduces version 1 (= the research clip layout) exactly. The settings were chosen on 117 videos
+  that are in no reported result and then tested once on the 225 test videos: `service/study/` and
+  [results/accuracy_study.md](results/accuracy_study.md).
   Hugging Face only allows Gradio/Docker Spaces on free accounts with ZeroGPU; `service/Dockerfile` +
-  `service/app/main.py` is the same pipeline as a plain CPU FastAPI container (about 75 s per video on 2 vCPUs)
-  for any Docker host.
+  `service/app/main.py` is the same pipeline as a plain CPU FastAPI container for any Docker host.
 * **Database (Neon Postgres):** tables `kv` and `videos`; `NEON_OWNER_URL=... python web/api/seed.py` loads
   `web/frontend/public/data`. The API only needs a read-only role.
 * **API (Render):** [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/roshanraj9136/dfd-fcg-degrade-to-detect)
@@ -189,6 +195,7 @@ qa/
 tests/                               crop and exactness checks
 service/app                          checker pipeline for uploaded videos (face → DFD-FCG → self-calibration → blur test)
 service/space                        Hugging Face Space (Gradio, ZeroGPU) wrapper; service/Dockerfile = CPU container
+service/study                        accuracy study for version 2 (selection set, per-clip scores, reports)
 web/checker                          upload-and-check site (Vercel)
 web/viva                             plain-language viva guide with SVG figures (Vercel)
 web/frontend                         original research site with all tables (React + Vite)

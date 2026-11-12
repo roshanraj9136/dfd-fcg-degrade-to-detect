@@ -12,7 +12,13 @@ export type Result = {
   regions: Record<"eyes" | "nose" | "lips" | "skin", number>;
   parts: Record<string, number>;
   face_png: string; heat_png: string;
-  meta: { fps: number; frames_used: number; clips: number; width: number; height: number; degrade: string; seconds: number; device?: string };
+  sure?: boolean; agreement?: number; margin?: number;
+  faces?: { p: number; p_original: number; p_strict: number }[];
+  timeline?: { start: number; end: number; p: number; faces: number[] }[];
+  meta: {
+    fps: number; frames_used: number; clips: number; width: number; height: number; degrade: string; seconds: number;
+    device?: string; faces_checked?: number; face_shown?: number; mirrored?: boolean; seconds_covered?: number;
+  };
 };
 export type Health = { status: "ready" | "waking" | "error"; detail?: string; analysed_total?: number | null; error?: string };
 export type Progress = { phase: "upload" | "queue" | "run" | "step"; position?: number; step?: string; frac?: number };

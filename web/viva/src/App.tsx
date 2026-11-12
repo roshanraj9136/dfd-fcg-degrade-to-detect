@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import scores from "./scores.json";
+import upgrade from "./upgrade.json";
 import websiteCheck from "./website_check.json";
-import { AttributionFig, Bars, BlurTestFig, FixFig, HeroFig, ModelArchFig, ScoreStrips, SystemFig } from "./figs";
+import { AttributionFig, Bars, BlurTestFig, CoverageFig, FixFig, HeroFig, ModelArchFig, ProtocolFig, ScoreStrips, SystemFig, V2Fig } from "./figs";
 
 const LINKS = {
   checker: "https://dfd-fcg-degrade-to-detect.vercel.app",
@@ -16,8 +17,8 @@ const LINKS = {
 
 const NAV: [string, string][] = [
   ["summary", "Summary"], ["architecture", "Architecture"], ["problem", "Problem"], ["why", "Why"],
-  ["found", "How I found it"], ["fix", "My fix"], ["results", "Results"], ["website-test", "Website test"], ["novelty", "Novelty"],
-  ["questions", "Questions"], ["script", "Script"],
+  ["found", "How I found it"], ["fix", "My fix"], ["results", "Results"], ["website-test", "Website test"], ["v2", "Version 2"],
+  ["novelty", "Defend novelty"], ["questions", "Questions"], ["script", "Script"],
 ];
 
 type S = Record<string, { real: number[]; fake: number[]; real_fix: number[]; fake_fix: number[] }>;
@@ -36,7 +37,7 @@ export default function App() {
         <Found />
         <Fix />
         <Results />
-        <Novelty />
+        <Defend />
         <Questions />
         <Script />
       </main>
@@ -81,7 +82,10 @@ function Section({ id, n, title, lead, children, tone }: { id: string; n?: strin
 }
 
 function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-3xl border border-slate-200 bg-white p-6 shadow-sm ${className}`}>{children}</div>;
+  // a card's own background / border colour (e.g. amber for trade-offs) must win over the default white / grey
+  const bg = /(^|\s)bg-/.test(className) ? "" : "bg-white";
+  const border = /(^|\s)border-(brand|fake|real|[a-z]+-\d)/.test(className) ? "" : "border-slate-200";
+  return <div className={`rounded-3xl border ${border} ${bg} p-6 shadow-sm ${className}`}>{children}</div>;
 }
 
 function Fig({ children, caption }: { children: ReactNode; caption?: ReactNode }) {
@@ -184,12 +188,12 @@ function Architecture() {
 
       <h3 className="mt-14 text-2xl font-bold text-slate-900">How the live system is built</h3>
       <p className="mt-2 max-w-3xl text-slate-600">
-        The checker website sends the video to a Hugging Face Space. The Space finds and aligns the face on its own CPU,
-        then borrows a free GPU for about 2 seconds to run DFD-FCG and the blur test, and returns the answer in about
-        15 to 25 seconds. A Neon Postgres database keeps the research results and an anonymous log of checks; a small
-        API on Render serves the research numbers.
+        The checker website sends the video to a Hugging Face Space. The Space finds and aligns every face on its own CPU,
+        then borrows a free GPU to run DFD-FCG on 8 clips of each face and the blur test. If no free GPU time is left, the
+        same steps run on the CPU and the answer takes about a minute. A Neon Postgres database keeps the research results
+        and an anonymous log of checks; a small API on Render serves the research numbers.
       </p>
-      <div className="mt-6"><Fig caption="CPU / GPU tags show where each step runs. If a visitor's free GPU time is used up, the two GPU steps run on the CPU instead: same answer, a few seconds slower."><SystemFig /></Fig></div>
+      <div className="mt-6"><Fig caption="CPU / GPU tags show where each step runs. If a visitor's free GPU time is used up, the GPU steps run on the CPU instead: same answer, slower."><SystemFig /></Fig></div>
       <LatestUpdate />
       <LiveNumbers />
     </Section>
@@ -360,6 +364,7 @@ function Results() {
       </Card>
       <p className="mt-4 text-sm text-slate-500">Every number: <a className="text-brand hover:underline" href={LINKS.tables}>results/tables.md</a> in the repository.</p>
       <WebsiteCheck />
+      <Version2 />
     </Section>
   );
 }
@@ -371,7 +376,7 @@ const WC = websiteCheck as unknown as {
   videos: number; failed: number; ffpp: Record<"clean" | "GB_5" | "VC_5", B>; faceshifter: B; dfdc: B;
   per_type: Record<string, { original: number; fix: number; blur_fix: number; n: number }>; two_face_mismatch: string[];
 };
-const pc = (v?: number) => (v == null ? "–" : `${(v * 100).toFixed(1)}%`);
+const pc = (v?: number | null) => (v == null || Number.isNaN(v) ? "–" : `${(v * 100).toFixed(1)}%`);
 const OPTIONS: ["clean" | "GB_5" | "VC_5", string][] = [["clean", "Video as it is"], ["GB_5", "Strong blur added"], ["VC_5", "Heavy compression added"]];
 
 function WebsiteCheck() {
@@ -384,8 +389,10 @@ function WebsiteCheck() {
   ];
   return (
     <div id="website-test" className="scroll-mt-20">
-      <h3 className="mt-14 text-2xl font-bold text-slate-900">I tested the live website on the paper's videos</h3>
+      <h3 className="mt-14 text-2xl font-bold text-slate-900">I tested the live website on the paper's videos (version 1)</h3>
       <p className="mt-2 max-w-3xl text-slate-600">
+        Version 1 of the website used the same clips as my research (2 clips from the first 4.8 seconds, one face), so
+        this test checks that the website gives the research answers. Version 2, below, reads more of each video.
         I ran the exact code behind the website, with the same settings as the live site, on all {WC.videos} test
         videos: the FF++ test split ({c.n - c.n_fake} real, {c.n_fake} fake), {fs.n} FaceShifter fakes the model never
         saw, and {dd.n} DFDC videos from another dataset. Each FF++ video was checked with all three website options.
@@ -477,31 +484,396 @@ function WebsiteCheck() {
   );
 }
 
-function Novelty() {
+/* ------------------------------------------------------------------ version 2 of the live checker */
+type UM = { n: number; acc: number | null; bacc: number | null; false_alarm: number | null; caught: number | null; auroc: number | null };
+type UC = { orig: UM; v1: UM; v2: UM; v2_orig: UM; v2_strict: UM; flips: { fixed: number; broken: number } };
+type UG = { n: number; n_fake: number; clean: UC; GB_5: UC; VC_5: UC };
+type US = { n: number; share: number; acc_all: number | null; acc_sure: number | null; acc_unsure: number | null; errors_sure: number; errors_unsure: number };
+type AB = { layout: string; flip: number; faces: number; ffpp?: { bacc: number; auroc: number }; dfdc?: { bacc: number; auroc: number } };
+type SG = { delta: number | null; ci95: (number | null)[]; p_gain_below_0: number; fixed: number; broken: number; mcnemar_p: number };
+type Cond = "clean" | "GB_5" | "VC_5";
+const UP = upgrade as unknown as {
+  videos: number; failed: number; errors: string[];
+  settings: { clips: number; window_s: number; mirror: boolean; faces: number; cert_margin: number; cert_agree: number };
+  select: { videos: number; used: number; fake: number; dfdc: number };
+  groups: { ffpp: UG; fsh: UG; dfdc: UG };
+  ablation: { select: AB[]; test: AB[] };
+  sure: Record<"all" | "ffpp" | "fsh" | "dfdc" | Cond, US>;
+  curve: Parameters<typeof CoverageFig>[0]["curve"];
+  significance: Partial<Record<"ffpp" | "dfdc" | "fsh", SG>>;
+  two_face: { vid: string; label: number; v1: number; v2: number }[];
+  two_face_summary: { n_fake: number; n_real: number; clean: { caught_v1: number; caught_v2: number; alarms_v1: number; alarms_v2: number };
+    all: { n_fake: number; n_real: number; caught_v1: number; caught_v2: number; alarms_v1: number; alarms_v2: number; alarms_v2_sure: number } };
+};
+const CONDS: Cond[] = ["clean", "GB_5", "VC_5"];
+const avg3 = (g: UG, k: "orig" | "v1" | "v2", m: keyof UM) => {
+  const v = CONDS.map((c) => g[c][k][m]).filter((x): x is number => x != null);
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : undefined;
+};
+const pts = (a?: number | null, b?: number | null) => (a == null || b == null ? "–" : `${b - a >= 0 ? "+" : "−"}${Math.abs((b - a) * 100).toFixed(1)} points`);
+const setName = (s: AB) => `${s.layout === "new" ? "8 clips from 10 s" : "2 clips from 4.8 s"}${s.flip ? " + mirrored" : ""} · ${s.faces === 2 ? "every person" : "main face only"}`;
+const isChosen = (s: AB) => s.layout === "new" && s.faces === UP.settings.faces && !!s.flip === UP.settings.mirror;
+const isV1 = (s: AB) => s.layout === "old" && s.faces === 1 && !s.flip;
+
+function Gain({ g, label }: { g?: SG; label: string }) {
+  if (!g || g.delta == null || g.ci95[0] == null || g.ci95[1] == null) return null;
+  const up = g.ci95[0] > 0, down = g.ci95[1] < 0;
   return (
-    <Section id="novelty" n="Novelty" tone="brand" title="What is new, and what is not"
-      lead="Be precise about this. It is the part a professor tests hardest.">
-      <div className="grid gap-5 md:grid-cols-2">
-        {[
-          ["1", "A failure the paper does not report", "DFD-FCG's decisions collapse under blur and compression while AUROC stays high. I measured it at the model's own threshold, per condition and with all qualities mixed, using the authors' own perturbation code."],
-          ["2", "The reason, measured inside the model", "Real faces react to a 2-pixel blur (+1.44), fakes barely (−0.17). Found with an exact split of the score, not with heatmaps."],
-          ["3", "A fix without retraining", "Self-calibration from the model's own features: false alarms 22.5% → 8.7% on damage types it never saw, mixed-quality AUROC 0.920 → 0.951."],
-          ["4", "A working public tool", "Anyone can upload a video and get REAL / FAKE with the evidence map, the quality correction and the blur test."],
-        ].map(([n, t, d]) => (
-          <Card key={n} className="flex gap-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-lg font-extrabold text-white">{n}</span>
-            <div><div className="font-bold text-slate-900">{t}</div><p className="mt-1 text-sm text-slate-600">{d}</p></div>
+    <li>• <b>{label}:</b> balanced accuracy {pts(0, g.delta)} (95% range {pts(0, g.ci95[0])} to {pts(0, g.ci95[1])}).
+      {" "}{g.fixed} answers fixed, {g.broken} broken.{" "}
+      {up ? <span className="text-real">The whole range is above zero, so the gain is unlikely to be luck.</span>
+        : down ? <span className="text-fake">The whole range is below zero: version 2 is worse here.</span>
+          : <span className="text-amber-700">The range includes zero, so the change is within noise on this many videos.</span>}
+    </li>
+  );
+}
+
+function Version2() {
+  const f = UP.groups.ffpp, d = UP.groups.dfdc, fs = UP.groups.fsh, s = UP.sure, st = UP.settings;
+  const tf = UP.two_face_summary;
+  const fshSure = Math.round(s.fsh.share * s.fsh.n);
+  const noGain = [UP.significance.ffpp, UP.significance.dfdc].every((g) => g?.ci95?.[0] != null && g.ci95[0]! <= 0 && g.ci95[1]! >= 0);
+  const rows: [string, UG, Cond, boolean][] = [
+    ["FF++ · video as it is", f, "clean", false], ["FF++ · strong blur added", f, "GB_5", false], ["FF++ · heavy compression added", f, "VC_5", false],
+    ["FaceShifter (a fake type it never saw)", fs, "clean", true],
+    ["DFDC (another dataset) · as it is", d, "clean", false], ["DFDC · strong blur added", d, "GB_5", false], ["DFDC · heavy compression added", d, "VC_5", false],
+  ];
+  const sel = UP.ablation.select, tst = UP.ablation.test;
+  return (
+    <div id="v2" className="scroll-mt-20">
+      <div className="mt-16 flex flex-wrap items-center gap-3">
+        <span className="rounded-full bg-brand px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">New</span>
+        <h3 className="text-2xl font-bold text-slate-900">Version 2: the checker reads more, checks everyone, and says when it is not sure</h3>
+      </div>
+      <p className="mt-2 max-w-3xl text-slate-600">
+        Same model, same weights, same quality correction. I changed only how the website uses them: {st.clips} clips from the
+        first {st.window_s} seconds instead of 2 clips from 4.8 seconds, every clear face instead of only the biggest one, and a
+        “not sure” label when the corrected score is less than {Math.round(st.cert_margin * 100)} points from the 0.5 line.
+      </p>
+      <div className="mt-6 grid gap-5">
+        <Fig caption="Scroll sideways on a phone. Grey: unchanged. Blue and amber: new in version 2."><V2Fig /></Fig>
+        <Fig caption={<>Every setting, including the “not sure” margin, was chosen on {UP.select.used} separate videos ({UP.select.used - UP.select.dfdc} FF++ test videos
+          that are not in any of my results, and {UP.select.dfdc} new DFDC videos). Only then were the {UP.videos} test videos run.</>}>
+          <ProtocolFig select={UP.select.used} test={UP.videos} />
+        </Fig>
+      </div>
+
+      <div className="mt-6 grid gap-5 md:grid-cols-3">
+        <Card>
+          <div className="text-sm font-bold uppercase tracking-wider text-slate-500">Two-person fakes, normal video</div>
+          <div className="mt-2 text-3xl font-extrabold text-brand">{tf.clean.caught_v1} of {tf.n_fake} → {tf.clean.caught_v2} of {tf.n_fake}</div>
+          <p className="mt-2 text-sm text-slate-600">caught, version 1 → version 2, with no false alarm on the {tf.n_real} real two-person videos. This is the
+            failure my version-1 test found. The cost on damaged copies is in the box below.</p>
+        </Card>
+        <Card>
+          <div className="text-sm font-bold uppercase tracking-wider text-slate-500">DFDC, normal video</div>
+          <div className="mt-2 text-3xl font-extrabold text-brand">{d.clean.v1.auroc?.toFixed(3)} → {d.clean.v2.auroc?.toFixed(3)}</div>
+          <p className="mt-2 text-sm text-slate-600">AUROC on another dataset the model was never trained on. Accuracy {pc(d.clean.v1.acc)} → {pc(d.clean.v2.acc)}.</p>
+        </Card>
+        <Card className="border-amber-200 bg-amber-50">
+          <div className="text-sm font-bold uppercase tracking-wider text-amber-800">When it says “sure”</div>
+          <div className="mt-2 text-3xl font-extrabold text-slate-900">{pc(s.all.acc_sure)}</div>
+          <p className="mt-2 text-sm text-slate-600">of the “sure” answers are right ({pc(s.all.share)} of all answers; {pc(s.ffpp.acc_sure)} on FF++). The “not sure”
+            ones are right only {pc(s.all.acc_unsure)} of the time, so the label warns where it matters.</p>
+        </Card>
+      </div>
+
+      <Card className="mt-6 border-amber-200 bg-amber-50">
+        <div className="font-bold text-amber-800">What did not improve (said plainly)</div>
+        <p className="mt-2 text-sm text-slate-700">
+          Over all three website options, accuracy at the 0.5 line did not go up: FF++ {pc(avg3(f, "v1", "acc"))} → {pc(avg3(f, "v2", "acc"))},
+          DFDC {pc(avg3(d, "v1", "acc"))} → {pc(avg3(d, "v2", "acc"))}. On the choice videos, 8 clips looked about 4 points better than 2; on the test videos
+          that gain did not repeat{noGain ? " and the difference is within noise (see the bootstrap below)" : ""}. On strongly blurred FF++ video
+          version 2 is {pts(f.GB_5.v1.acc, f.GB_5.v2.acc)}. I kept the settings I fixed before the test: re-choosing them after seeing the test videos would make
+          every test number meaningless. So I do <b>not</b> claim that version 2 is more accurate overall. I claim that it fixes the two-person failure,
+          ranks DFDC better, and tells the user when not to trust it.
+        </p>
+        <p className="mt-2 text-sm text-slate-700">
+          <b>Checking every person has a price.</b> Taking the more suspicious of two faces raises the score of real two-person videos too. Over all three
+          options, the {tf.n_real} real two-person test videos were wrongly called fake in {tf.all.alarms_v1} of {tf.all.n_real} checks by version 1 and
+          {" "}{tf.all.alarms_v2} of {tf.all.n_real} by version 2, all on blurred or compressed copies ({tf.all.alarms_v2_sure} of them marked “sure”). Fakes caught:
+          {" "}{tf.all.caught_v1} → {tf.all.caught_v2} of {tf.all.n_fake}. These are only {tf.n_real + tf.n_fake} videos, so the counts are small.
+        </p>
+      </Card>
+
+      <Card className="mt-6 overflow-x-auto p-0">
+        <table className="w-full min-w-[820px] text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+              <th className="px-5 py-3">Same {UP.videos} test videos</th>
+              <th className="px-3 py-3 text-right">Accuracy<br />v1 → v2</th>
+              <th className="px-3 py-3 text-right">Real called fake<br />v1 → v2</th>
+              <th className="px-3 py-3 text-right">Fakes caught<br />v1 → v2</th>
+              <th className="px-5 py-3 text-right">AUROC<br />v1 → v2</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([name, g, c, fakesOnly]) => {
+              const a = g[c].v1, b = g[c].v2;
+              const cell = (x: number | null, y: number | null, lowerBetter = false) => {
+                const better = x != null && y != null && (lowerBetter ? y < x - 1e-9 : y > x + 1e-9);
+                const worse = x != null && y != null && (lowerBetter ? y > x + 1e-9 : y < x - 1e-9);
+                return <span className={better ? "font-semibold text-real" : worse ? "font-semibold text-fake" : ""}>{pc(x ?? undefined)} → {pc(y ?? undefined)}</span>;
+              };
+              return (
+                <tr key={name} className="border-t border-slate-100">
+                  <td className="px-5 py-2 font-medium text-slate-900">{name}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{fakesOnly ? "–" : cell(a.acc, b.acc)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{fakesOnly ? "–" : cell(a.false_alarm, b.false_alarm, true)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{cell(a.caught, b.caught)}</td>
+                  <td className="px-5 py-2 text-right tabular-nums">{a.auroc?.toFixed(3) ?? "–"} → {b.auroc?.toFixed(3) ?? "–"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <p className="px-5 pb-4 pt-3 text-xs text-slate-500">
+          Both versions were computed in the same run with the same face finding, so the difference comes only from the
+          version-2 settings. Green: better, red: worse. FF++: {f.n - f.n_fake} real and {f.n_fake} fake videos; DFDC: {d.n - d.n_fake} real and {d.n_fake} fake.
+          {UP.failed > 0 && ` ${UP.failed} videos could not be checked (too short or no face) and are left out of both versions.`}
+        </p>
+      </Card>
+
+      <Card className="mt-6">
+        <div className="font-bold text-slate-900">Is the change real, or luck?</div>
+        <p className="mt-1 text-sm text-slate-600">I resampled the test videos 2,000 times (a paired bootstrap: the same videos for both versions) and
+          looked at the change in balanced accuracy, averaged over the three website options.</p>
+        <ul className="mt-3 space-y-1.5 text-sm text-slate-700">
+          <Gain g={UP.significance.ffpp} label="FF++" />
+          <Gain g={UP.significance.dfdc} label="DFDC" />
+          <Gain g={UP.significance.fsh} label="FaceShifter (with the FF++ real videos)" />
+        </ul>
+      </Card>
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-[1.25fr_1fr]">
+        <Fig caption={<>Each point is one choice of margin. Moving left, the checker marks fewer answers “sure”, and those are more often right.
+          The website's margin (±{Math.round(st.cert_margin * 100)} points, the dots) was fixed on the separate videos before this test.</>}>
+          <CoverageFig curve={UP.curve} chosen={st.cert_margin} />
+        </Fig>
+        <Card>
+          <div className="font-bold text-slate-900">“Sure” answers, by kind of video</div>
+          <table className="mt-3 w-full text-sm">
+            <thead><tr className="text-left text-xs uppercase tracking-wider text-slate-500"><th className="py-1.5"></th><th className="py-1.5 text-right">sure</th><th className="py-1.5 text-right">right if sure</th><th className="py-1.5 text-right">right if not</th></tr></thead>
+            <tbody className="text-slate-700">
+              {([["FF++ · as it is", s.clean], ["FF++ · strong blur", s.GB_5], ["FF++ · heavy compression", s.VC_5], ["DFDC, all options", s.dfdc], ["All answers", s.all]] as [string, US][]).map(([n, x]) => (
+                <tr key={n} className={`border-t border-slate-100 ${n === "All answers" ? "font-semibold text-slate-900" : ""}`}>
+                  <td className="py-1.5 pr-2">{n}</td><td className="py-1.5 text-right tabular-nums">{pc(x.share)}</td>
+                  <td className="py-1.5 text-right tabular-nums text-real">{pc(x.acc_sure)}</td><td className="py-1.5 text-right tabular-nums text-amber-700">{pc(x.acc_unsure)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-3 text-xs text-slate-500">FF++ rows include the FaceShifter fakes. “Not sure” answers still show the probable verdict; they are not hidden.</p>
+        </Card>
+      </div>
+
+      <Card className="mt-6 overflow-x-auto p-0">
+        <table className="w-full min-w-[760px] text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+              <th className="px-5 py-3">Every setting I tried (balanced accuracy, average of 3 options)</th>
+              <th className="px-3 py-3 text-right">Choice videos<br />FF++</th><th className="px-3 py-3 text-right">Choice videos<br />DFDC</th>
+              <th className="px-3 py-3 text-right">Test videos<br />FF++</th><th className="px-5 py-3 text-right">Test videos<br />DFDC</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sel.map((a, i) => {
+              const t = tst.find((x) => x.layout === a.layout && x.flip === a.flip && x.faces === a.faces) ?? tst[i];
+              return (
+                <tr key={setName(a)} className={`border-t border-slate-100 ${isChosen(a) ? "bg-brand-soft/60 font-semibold text-brand" : isV1(a) ? "text-slate-900" : "text-slate-600"}`}>
+                  <td className="px-5 py-1.5">{setName(a)}{isChosen(a) ? " ← version 2" : isV1(a) ? " ← version 1" : ""}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">{pc(a.ffpp?.bacc)}</td><td className="px-3 py-1.5 text-right tabular-nums">{pc(a.dfdc?.bacc)}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">{pc(t?.ffpp?.bacc)}</td><td className="px-5 py-1.5 text-right tabular-nums">{pc(t?.dfdc?.bacc)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <p className="px-5 pb-4 pt-3 text-xs text-slate-500">The choice was made on the left two columns only. On the test columns, 8 clips is not better than 2:
+          the gain on the choice videos did not repeat. “Mirrored” means each clip is also checked flipped left-right and the
+          scores are averaged (DFD-FCG was trained with flipped clips). It did not help on the choice videos, so version 2 does not use it.</p>
+      </Card>
+
+      <Card className="mt-6 border-amber-200 bg-amber-50">
+        <div className="font-bold text-amber-800">What version 2 costs, honestly</div>
+        <ul className="mt-3 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
+          <li>• <b>Slower.</b> 4 times as many clips per face, and twice that with two people. On the server's CPU a check now takes about a minute
+            (measured on the live site: 54 s for the sample video), and each check books more of the visitor's free GPU time.</li>
+          <li>• <b>Some answers become “not sure”.</b> {pc(1 - s.all.share)} of the test answers get the label. That is the price of the {pc(s.all.acc_sure)} accuracy on the “sure” ones.</li>
+          <li>• <b>At most 2 people.</b> A second face counts only if it is at least half as big as the main one and visible in 80% of the video. Crowds are not handled.</li>
+          <li>• <b>DFDC is still the weakest case</b> (average accuracy {pc(avg3(d, "v2", "acc"))}). Only {pc(s.dfdc.share)} of DFDC answers are marked “sure”, and those are
+            right {pc(s.dfdc.acc_sure)} of the time.</li>
+          <li>• <b>“Sure” is not a guarantee on a fake type it never saw.</b> On the FaceShifter fakes, {s.fsh.errors_sure} of the {fshSure} “sure” answers were wrong
+            (confidently called real).</li>
+          {UP.two_face.length > 0 && <li className="md:col-span-2">• <b>Two-person test videos:</b> {UP.two_face.map((t) => `${t.vid} (${t.label ? "fake" : "real"}: ${Math.round(t.v1 * 100)}% → ${Math.round(t.v2 * 100)}% fake)`).join(" · ")}.</li>}
+        </ul>
+      </Card>
+      <Say>Version 2 uses the same model and the same correction, but reads {st.clips} clips from {st.window_s} seconds, checks every person, and says
+        “not sure” near the line. I fixed these settings on {UP.select.used} separate videos and tested once on the {UP.videos} test videos. Honestly, accuracy
+        at the line did not change beyond noise. But the two-person fakes it used to miss on normal video are now caught, and when it says “sure” it is right
+        {" "}{pc(s.all.acc_sure)} of the time, against {pc(s.all.acc_unsure)} when it says “not sure”.</Say>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ novelty: what is new, why it is needed, how to defend it */
+type Contribution = { n: string; kind: "Research" | "Engineering"; today?: boolean; title: string; what: ReactNode; why: ReactNode; proof: ReactNode; push: string; answer: ReactNode };
+
+function contributions(): Contribution[] {
+  const s = UP.sure, f = UP.groups.ffpp, d = UP.groups.dfdc;
+  return [
+    { n: "1", kind: "Research", title: "A failure the paper does not report",
+      what: <>I measured DFD-FCG's real decisions (REAL or FAKE at its 0.5 line) under the authors' own 7 kinds of damage, not only AUROC.</>,
+      why: <>A user sees the verdict, not the AUROC. AUROC can stay high while most real videos are called fake.</>,
+      proof: <>Strong blur: 63% of real videos called FAKE while AUROC still reads 0.905.</>,
+      push: "Everyone knows blur and compression hurt detectors.",
+      answer: <>In general, yes (for example Yang et al., 2021). The DFD-FCG paper reports this model as robust using AUROC. I show, for this
+        CVPR 2025 model and with the authors' own damage code, that its decisions are not robust, and by how much.</> },
+    { n: "2", kind: "Research", title: "The reason, measured exactly inside the model",
+      what: <>An exact split of every head score into 240 pieces (layer × part) and 256 face patches, compared between clean and damaged video.</>,
+      why: <>To fix the cause, not the symptom, I had to know what the model uses as evidence of “real”.</>,
+      proof: <>A 2-pixel blur adds +1.44 fake evidence to real faces and only −0.17 to fakes. The pieces add up to the model's score within 0.0000003 on all 5,976 clips.</>,
+      push: "Explanation maps are unreliable.",
+      answer: <>Gradient heatmaps are approximations. Mine is exact algebra: the heads are linear after a LayerNorm, so the score splits into a sum. I check
+        the sum against the real score on every clip.</> },
+    { n: "3", kind: "Research", title: "A fix without retraining",
+      what: <>A small linear read-out on the model's own features predicts how much fake evidence only the low quality added, and subtracts it.</>,
+      why: <>Retraining a CLIP ViT-L/14 detector for every kind of damage needs data and GPUs I don't have. Quality-robust methods such as QAD (ICCV 2023)
+        retrain the detector; mine works on the released weights.</>,
+      proof: <>False alarms on damaged video 22.5% → 8.7%, on damage types left out of fitting. Mixed-quality AUROC 0.920 → 0.951. One global
+        re-calibration (Platt scaling) only reaches 12.2%.</>,
+      push: "Isn't this just moving the threshold?",
+      answer: <>No. A threshold or Platt scaling moves one line for every video. My read-out moves each video's score by its own amount, estimated from
+        that video's features. Its training target never says real or fake, only how much damage changed the score.</> },
+    { n: "4", kind: "Research", today: true, title: "An answer that says when it is not sure",
+      what: <>Answers less than {Math.round(UP.settings.cert_margin * 100)} points from the 0.5 line are labelled “not sure”. The margin was fixed on {UP.select.used} separate
+        videos, then tested once.</>,
+      why: <>A confident wrong FAKE accuses a real person. The errors gather near the line, on damaged video and on new datasets, exactly where a user
+        cannot tell.</>,
+      proof: <>On the {UP.videos} test videos, {pc(s.all.share)} of answers are “sure” and {pc(s.all.acc_sure)} of those are right. The “not sure” answers are right only
+        {" "}{pc(s.all.acc_unsure)} of the time. On DFDC: {pc(s.dfdc.acc_sure)} right when sure.</>,
+      push: "Refusing to answer is an old idea.",
+      answer: <>Yes: the reject option (Chow, 1970) and selective classification (Geifman and El-Yaniv, 2017). I don't claim the idea. New is that it is
+        built on my quality-corrected score, fixed before testing, and checked on blurred, compressed and other-dataset video. I also report
+        what it costs ({pc(1 - s.all.share)} of answers become “not sure”) and where it fails: on FaceShifter fakes, {s.fsh.errors_sure} of {Math.round(s.fsh.share * s.fsh.n)} “sure”
+        answers were wrong.</> },
+    { n: "5", kind: "Engineering", today: true, title: "Every person, and more of the video",
+      what: <>Every clear face is checked and the most suspicious one decides; {UP.settings.clips} clips from {UP.settings.window_s} seconds instead of 2 clips from 4.8 seconds.</>,
+      why: <>My version-1 website test found DFDC fakes that were missed because the website checked the person who was not swapped.</>,
+      proof: <>Two-person fakes on normal video: {UP.two_face_summary.clean.caught_v1} of {UP.two_face_summary.n_fake} caught → {UP.two_face_summary.clean.caught_v2} of {UP.two_face_summary.n_fake},
+        with no false alarm on the {UP.two_face_summary.n_real} real two-person videos. But on their blurred or compressed copies, real two-person videos
+        were called fake {UP.two_face_summary.all.alarms_v2} of {UP.two_face_summary.all.n_real} times (version 1: {UP.two_face_summary.all.alarms_v1}). DFDC AUROC on normal
+        video {d.clean.v1.auroc?.toFixed(3)} → {d.clean.v2.auroc?.toFixed(3)}. Overall accuracy did <b>not</b> go up (FF++ {pc(avg3(f, "v1", "acc"))} → {pc(avg3(f, "v2", "acc"))}, within noise).</>,
+      push: "So version 2 is not more accurate?",
+      answer: <>Not overall, and I say so. The 8-clip gain I saw on the choice videos did not repeat on the test videos, and I did not re-tune after
+        looking, because that would make every test number meaningless. What version 2 fixes is a specific measured failure (missed two-person
+        fakes on normal video), at the price of more false alarms on damaged two-person videos, and it adds the “not sure” label. Using more clips
+        and checking every face is common practice, so I call this engineering.</> },
+    { n: "6", kind: "Engineering", title: "A public checker, tested on the paper's own videos",
+      what: <>An upload website and a free-GPU backend with a CPU backup. I ran the website's own code on all 225 test videos.</>,
+      why: <>A robustness fix only matters if it works on videos people upload, and a demo must give the same answers as the research.</>,
+      proof: <>Version 1 gave the research verdict on 99.2% of normal FF++ videos. Version 2 was tested on the same 225 videos (Results → Version 2).</>,
+      push: "Anyone can make a website.",
+      answer: <>The website is not the novelty. It is the proof that the method runs end to end on uploaded videos, with numbers I measured on the paper's test set.</> },
+  ];
+}
+
+const RELATED: [string, string, string][] = [
+  ["DFD-FCG (Han et al., CVPR 2025)", "Reports robustness as AUROC for each kind of damage.", "I test the decisions at its own 0.5 line, find that they break, find why, and fix it."],
+  ["Damage studies (e.g. Yang et al., Responsible AI workshop at ICLR 2021)", "Show that lower video quality makes detectors call real videos fake.", "The same kind of finding for a current model, plus the cause inside the model and a fix."],
+  ["Quality-robust training (e.g. QAD, Le and Woo, ICCV 2023)", "Train the detector to be robust to quality.", "No retraining: a small read-out on the frozen model, usable with released weights."],
+  ["Platt scaling, a new threshold", "One shift of the score for all videos.", "A different shift for each video, from its own features: 8.7% vs 12.2% false alarms."],
+  ["Selective prediction (Chow 1970; Geifman and El-Yaniv, NeurIPS 2017)", "Let a classifier say “I don't know”.", "Used on the quality-corrected deepfake score, margin fixed on separate videos, tested on damaged and other-dataset video."],
+];
+
+function Defend() {
+  const s = UP.sure;
+  const drill: [string, ReactNode][] = [
+    ["In one sentence, what is your contribution?",
+      <>DFD-FCG's robustness claim rests on AUROC; I show that its actual decisions fail on blurry and compressed real videos, find the cause inside
+        the model with an exact split of its score, fix it without retraining, and ship a checker that says when it is not sure.</>],
+    ["You did not train anything. Is this research?",
+      <>Yes. The research questions are measurement and mechanism: does the decision survive damage, and why not? The fix is deliberately training-free,
+        so it works on the authors' released weights. Not retraining is a constraint I chose and can defend: it shows the problem is in how the score is
+        read, not only in the features.</>],
+    ["Did you tune version 2 on the test set?",
+      <>No. Every setting and the “not sure” margin were chosen on {UP.select.used} other videos ({UP.select.used - UP.select.dfdc} FF++ test videos outside my results and
+        {" "}{UP.select.dfdc} new DFDC videos). The {UP.videos} test videos were run once, after that. The table in Results → Version 2 shows both sets side by side.</>],
+    ["Is the version-2 change real or noise?",
+      <>I checked with a paired bootstrap over the test videos (2,000 resamples).{UP.significance.ffpp?.ci95?.[0] != null && <> On FF++ the change in balanced
+        accuracy is {pts(0, UP.significance.ffpp.delta)}, 95% range {pts(0, UP.significance.ffpp.ci95[0])} to {pts(0, UP.significance.ffpp.ci95[1])}.</>}
+        {UP.significance.dfdc?.ci95?.[0] != null && <> On DFDC: {pts(0, UP.significance.dfdc.delta)}, range {pts(0, UP.significance.dfdc.ci95[0])} to {pts(0, UP.significance.dfdc.ci95[1])}.</>}
+        {" "}Both ranges include zero, so I don't claim higher overall accuracy. My claims for version 2 are the two-person fakes and the “not sure” label,
+        which I measured directly.</>],
+    ["Isn't “not sure” a way to hide mistakes?",
+      <>No. The probable verdict is still shown, and I report accuracy on all answers as well as on the “sure” ones. The label is honest only if
+        “not sure” answers really are worse, and they are: right {pc(s.all.acc_unsure)} of the time against {pc(s.all.acc_sure)} for “sure”.</>],
+    ["Why trust the score margin as a sign of doubt?",
+      <>Because I tested it. I also tried a second signal, how many clips agree with the verdict; on the separate videos it added nothing beyond the margin,
+        so I left it out. Simpler rule, same result.</>],
+    ["Would this work on new kinds of deepfakes?",
+      <>Partly, and I show where it does not. On FaceShifter, a fake type DFD-FCG never saw, and on DFDC, another dataset, it is weaker. There the checker
+        marks far fewer answers “sure” ({pc(s.dfdc.share)} on DFDC against {pc(s.ffpp.share)} on FF++), which is the right reaction. But “sure” is not a guarantee:
+        on FaceShifter {s.fsh.errors_sure} of {Math.round(s.fsh.share * s.fsh.n)} “sure” answers were wrong. A better detector for new fakes needs retraining, which is future work.</>],
+    ["What would you do next?",
+      <>Fit the read-out on more kinds of damage and more datasets, test on newer generators (diffusion-based face swaps), and use the exact split to
+        retrain the model to stop treating fine detail as proof of “real”.</>],
+  ];
+  return (
+    <Section id="novelty" n="Defend the novelty" tone="brand" title="What is new, why it is needed, and how to defend it"
+      lead="Professors test this part hardest. For each piece: what it is, why it is needed, the proof, and what to say when they push back. Say what is not yours before they ask.">
+      <Card className="border-brand bg-brand-soft">
+        <div className="text-xs font-bold uppercase tracking-wider text-brand">Open with this</div>
+        <p className="mt-1 text-lg text-slate-900">
+          The paper says DFD-FCG is robust because its AUROC stays high. I showed that its <b>decisions</b> still fail on low-quality real videos, found
+          <b> why</b> inside the model, fixed it <b>without retraining</b>, and built a public checker that reads every person and <b>says when it is not sure</b>.
+        </p>
+      </Card>
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+        {contributions().map((c) => (
+          <Card key={c.n} className={c.today ? "ring-2 ring-brand/30" : ""}>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand text-base font-extrabold text-white">{c.n}</span>
+              <div className="font-bold text-slate-900">{c.title}</div>
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${c.kind === "Research" ? "bg-indigo-100 text-brand" : "bg-slate-100 text-slate-600"}`}>{c.kind}</span>
+              {c.today && <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">new in version 2</span>}
+            </div>
+            <dl className="mt-4 space-y-2.5 text-sm">
+              <div><dt className="font-semibold text-slate-900">What</dt><dd className="text-slate-600">{c.what}</dd></div>
+              <div><dt className="font-semibold text-slate-900">Why it is needed</dt><dd className="text-slate-600">{c.why}</dd></div>
+              <div><dt className="font-semibold text-real">Proof</dt><dd className="text-slate-700">{c.proof}</dd></div>
+              <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+                <dt className="font-semibold text-fake">If they say: “{c.push}”</dt>
+                <dd className="mt-1 text-slate-700">{c.answer}</dd>
+              </div>
+            </dl>
           </Card>
         ))}
       </div>
+
+      <h3 className="mt-12 text-2xl font-bold text-slate-900">Where it sits next to existing work</h3>
+      <Card className="mt-4 overflow-x-auto p-0">
+        <table className="w-full min-w-[760px] text-left text-sm">
+          <thead><tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><th className="px-5 py-3">Existing work</th><th className="px-3 py-3">What it does</th><th className="px-5 py-3 text-brand">What mine adds</th></tr></thead>
+          <tbody>
+            {RELATED.map(([a, b, c]) => (
+              <tr key={a} className="border-t border-slate-100"><td className="px-5 py-2.5 font-semibold text-slate-900">{a}</td><td className="px-3 py-2.5 text-slate-600">{b}</td><td className="px-5 py-2.5 font-medium text-slate-900">{c}</td></tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="px-5 pb-4 pt-3 text-xs text-slate-500">Cite these by name if asked. I only claim what I measured; the ideas of abstaining, Platt scaling and ridge regression are standard.</p>
+      </Card>
+
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         <Card>
           <div className="font-bold text-slate-900">Not mine (say it before they ask)</div>
           <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
             <li>• The DFD-FCG model, its training and its weights (Han et al., CVPR 2025).</li>
-            <li>• The perturbation protocol and code (from the authors' repository).</li>
-            <li>• Ridge regression and Platt scaling are standard tools.</li>
-            <li>• That compression hurts deepfake detectors is known in general. New here is the measurement for this model at its threshold, the mechanism and the fix.</li>
+            <li>• The damage protocol and code (from the authors' repository) and the FaceForensics++ and DFDC videos.</li>
+            <li>• Ridge regression, Platt scaling and the idea of saying “not sure” (selective prediction) are standard tools.</li>
+            <li>• Using more clips and checking every face are common in deepfake detection practice.</li>
+            <li>• That compression hurts deepfake detectors is known in general. New here is the measurement for this model at its threshold, the cause and the fix.</li>
           </ul>
         </Card>
         <Card>
@@ -511,9 +883,12 @@ function Novelty() {
             <li>• Using the blur test alone: no gain at the same false-alarm rate.</li>
             <li>• Removing a “quality direction” from the explanation pieces.</li>
             <li>• A quality score from the face crop: 15.1% false alarms on unseen types, worst 69%.</li>
+            <li>• <b>New:</b> checking each clip mirrored as well: did not help, worse on blurred video.</li>
+            <li>• <b>New:</b> counting how many clips agree as a sign of doubt: added nothing beyond the score margin.</li>
           </ul>
         </Card>
       </div>
+
       <Card className="mt-6 overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead>
@@ -522,10 +897,10 @@ function Novelty() {
           <tbody className="text-slate-700">
             {[
               ["Robustness check", "AUROC per perturbation", "–", "AUROC and the actual decisions at 0.5, per condition and mixed"],
-              ["Videos", "large public benchmarks", "1 real + 1 fake", "275 videos: FF++ test split, FaceShifter, DFDC; 15 quality conditions"],
+              ["Videos", "large public benchmarks", "1 real + 1 fake", `275 videos (FF++ test split, FaceShifter, DFDC; 15 quality conditions) + ${UP.select.used} separate videos for choosing settings`],
               ["Explanation", "attention maps", "exact pieces of one decision", "exact pieces of how a decision changes under damage"],
-              ["Decision rule", "fixed", "–", "self-calibration, plus an optional strict mode"],
-              ["Usable tool", "code", "–", "public upload checker"],
+              ["Decision rule", "fixed", "–", "self-calibration, optional strict mode, and a “not sure” label"],
+              ["Usable tool", "code", "–", "public upload checker: every person, 10 seconds, tested on the paper's videos"],
             ].map((r) => (
               <tr key={r[0]} className="border-b border-slate-100 last:border-0">
                 <td className="py-2.5 pr-4 font-semibold text-slate-900">{r[0]}</td><td className="py-2.5 pr-4">{r[1]}</td><td className="py-2.5 pr-4">{r[2]}</td><td className="py-2.5 font-medium text-slate-900">{r[3]}</td>
@@ -534,6 +909,21 @@ function Novelty() {
           </tbody>
         </table>
       </Card>
+
+      <h3 className="mt-12 text-2xl font-bold text-slate-900">Practice: hard questions about novelty</h3>
+      <div className="mt-4 space-y-3">
+        {drill.map(([q, a]) => (
+          <details key={q} className="group rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm open:shadow-md">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-900">
+              {q}
+              <span className="text-brand transition group-open:rotate-45">＋</span>
+            </summary>
+            <p className="mt-3 text-slate-600">{a}</p>
+          </details>
+        ))}
+      </div>
+      <Say>The model and the idea of saying “not sure” are not mine. What is mine: showing that the decisions break even though AUROC looks fine, the exact
+        cause inside the model, a fix that needs no retraining, and a checker that I tested on the paper's own videos, with every setting chosen before the test.</Say>
     </Section>
   );
 }
@@ -573,19 +963,20 @@ const QA: [string, ReactNode][] = [
       the evaluation protocols, the self-calibration and strict mode, the checker backend on Hugging Face (face finding on
       the CPU, the detector on a free GPU with a CPU fallback), both websites, the API and the database.</>],
   ["What if many people use the live checker, or the free GPU runs out?",
-    <>Hugging Face gives each visitor a few free GPU minutes a day. I split the work so only the detector uses the GPU, about
-      2 seconds per video; finding the face runs on the CPU. If no GPU time is left, the detector runs on the CPU instead
-      and gives the same answer a few seconds later. Checks are handled one at a time, and the website shows how many
-      videos are ahead.</>],
+    <>Hugging Face gives each visitor a few free GPU minutes a day. Only the detector uses the GPU; finding the faces runs on the
+      CPU, which has no daily limit. Each check books GPU time in proportion to its work (more for two people). If no GPU time
+      is left, the detector runs on the CPU instead and gives the same answer in about a minute. Checks are handled one at a
+      time, and the website shows how many videos are ahead.</>],
   ["Does the live checker give the same answer as your research pipeline?",
-    <>It uses the same model, weights, alignment and add-on. To be fast on a CPU it looks for the face on every 12th frame
-      and computes landmarks on every 3rd frame (plus every frame the model reads), then smooths them the same way. I ran
-      the website's code on all 225 test videos: it gives the same verdict as the research pipeline on 99.2% of normal
-      FF++ videos (96.2% blurred, 95.4% compressed), and the scores differ by about 0.01 on average.</>],
+    <>Version 1 did: it used the same 2 clips and one face, and gave the research verdict on 99.2% of normal FF++ videos (96.2%
+      blurred, 95.4% compressed). Version 2 reads more on purpose ({UP.settings.clips} clips from {UP.settings.window_s} seconds, every person), so it can
+      differ from the research run. On the same test videos its average FF++ accuracy is {pc(avg3(UP.groups.ffpp, "v2", "acc"))}, against
+      {" "}{pc(avg3(UP.groups.ffpp, "v1", "acc"))} for version 1: a difference within noise.</>],
   ["How accurate is the website?",
-    <>On the FF++ test videos: 97.7% on normal video, 80.8% with strong blur (the original detector: 66.2%) and 77.7% with
-      heavy compression. On blurry video it wrongly accuses 7.1% of real videos instead of 61.4%, but catches 66.7% of
-      fakes instead of 98.3%. On DFDC, another dataset, it is 67.5%, because DFD-FCG itself is weak there.</>],
+    <>Version 2 on the FF++ test videos: {pc(UP.groups.ffpp.clean.v2.acc ?? undefined)} on normal video, {pc(UP.groups.ffpp.GB_5.v2.acc ?? undefined)} with strong blur
+      and {pc(UP.groups.ffpp.VC_5.v2.acc ?? undefined)} with heavy compression (original DFD-FCG: {pc(UP.groups.ffpp.clean.orig.acc ?? undefined)},
+      {" "}{pc(UP.groups.ffpp.GB_5.orig.acc ?? undefined)}, {pc(UP.groups.ffpp.VC_5.orig.acc ?? undefined)}). On DFDC, another dataset, {pc(UP.groups.dfdc.clean.v2.acc ?? undefined)} on
+      normal video. When it says “sure”, it is right {pc(UP.sure.all.acc_sure)} of the time over all test answers.</>],
   ["How is this different from your earlier project?",
     <>The earlier project explained 2 videos. This one tests 275 videos under 15 conditions, finds a failure and its cause,
       fixes it, and re-tests the earlier claims (some hold, the “70.9% temporal” one does not).</>],
@@ -617,6 +1008,7 @@ function Script() {
     "So I added one small linear read-out. From the model's own features it estimates how much fake evidence came only from poor quality, and subtracts it. No retraining.",
     "False alarms on damaged video drop from 22.5% to 8.7%, also for damage types it never saw, and the mixed-quality AUROC rises from 0.920 to 0.951. The cost is that fewer fakes are caught at the default line, which I report.",
     "Finally, I deployed it as a public website where anyone can upload a video and see the answer and the reason.",
+    `Version 2 of the website checks every person, reads 10 seconds instead of 5, and says “not sure” near the line. I chose its settings on separate videos; on the test videos its “sure” answers are right ${pc(UP.sure.all.acc_sure)} of the time.`,
   ];
   return (
     <Section id="script" n="Practise this" title="The one-minute script">
@@ -644,9 +1036,9 @@ function LatestUpdate() {
   const rows: [string, string, string][] = [
     ["Problem I hit", "Hugging Face gives every visitor only a few free GPU minutes per day (2 minutes without an account). The old checker ran everything on the GPU and booked about a minute of GPU time per video, so a visitor could do only a few checks a day before getting a “quota exceeded” error.",
       "fake"],
-    ["What I changed", "Finding the face (the slow part) now runs on the server's CPU, which has no daily limit. The GPU is used only for the detector itself, about 2 seconds per video instead of about 25. Each check now books 23 seconds of GPU instead of 53 to 68.",
+    ["What I changed", "Finding the faces (the slow part) runs on the server's CPU, which has no daily limit. The GPU is used only for the detector itself. In version 1 that cut the GPU time per video from about 25 seconds to about 2. Version 2 runs 4 times as many clips, so it books more, in proportion to the work.",
       "brand"],
-    ["Safety net", "If the free GPU time is still used up, or no GPU is free, the detector runs on the CPU instead. Same answer (tested: 93% fake on the sample deepfake either way), only a few seconds slower. The website then says “Using the server's CPU” instead of failing.",
+    ["Safety net", "If the free GPU time is used up, or no GPU is free, the detector runs on the CPU instead. Same answer (tested: 93% fake on the sample deepfake either way), only slower: about a minute for version 2. The website then says “Using the server's CPU” instead of failing.",
       "real"],
     ["Honest progress bar", "The website now shows the real step the server is on (finding the face, getting a GPU or using the CPU, checking, blur test) instead of a timer guess.",
       "ink"],
@@ -666,15 +1058,15 @@ function LatestUpdate() {
         ))}
       </div>
       <div className="mt-5 grid gap-3 text-center sm:grid-cols-3">
-        {[["~2 s", "GPU time per video (was ~25 s)"], ["15–25 s", "answer time on the website"], ["Same answer", "on the GPU or on the CPU backup"]].map(([b, s]) => (
+        {[["CPU", "finds the faces, no daily limit"], ["GPU", "only for the detector, booked per check"], ["Same answer", "on the GPU or on the CPU backup"]].map(([b, s]) => (
           <div key={s} className="rounded-2xl border border-slate-200 px-3 py-3">
             <div className="text-2xl font-extrabold text-slate-900">{b}</div>
             <div className="text-xs text-slate-500">{s}</div>
           </div>
         ))}
       </div>
-      <Say>The heavy face-finding runs on the free CPU and only the detector borrows a GPU for two seconds. If the free GPU
-        time runs out, it falls back to the CPU and still gives the same answer, so the demo always works.</Say>
+      <Say>The heavy face-finding runs on the free CPU and only the detector borrows a GPU. If the free GPU time runs out, it
+        falls back to the CPU and still gives the same answer, so the demo always works.</Say>
     </Card>
   );
 }

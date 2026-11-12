@@ -6,8 +6,9 @@ Deepfake video checker: Hugging Face Space on ZeroGPU (free GPU per request).
     evidence the video's blur / compression added, and removes it
   + blur test and per-region evidence map as a short explanation.
 
-Face finding and alignment run on the Space's CPU; only the two DFD-FCG passes book the GPU (about 2 s each check).
-When a visitor's free ZeroGPU time is used up, or no GPU is free, those passes run on the CPU instead (same scores).
+Face finding and alignment run on the Space's CPU; only the DFD-FCG passes book the GPU (8 clips from the first 10 s
+plus the blur test, for every person in the video). When a visitor's free ZeroGPU time is used up, or no GPU is free,
+those passes run on the CPU instead (same scores, slower).
 
 API (used by the website through @gradio/client):
     /analyze  (file, degrade: none|blur|compress) -> result dict
@@ -47,7 +48,7 @@ from models import ensure_models  # noqa: E402
 
 t0 = time.time()
 ensure_models()
-from pipeline import Analyzer, NoFace  # noqa: E402
+from pipeline import FLIP_TTA, Analyzer, NoFace  # noqa: E402
 
 ZERO = os.environ.get("SPACES_ZERO_GPU", "").lower() in ("1", "true")
 DEVICE = "cuda" if ZERO or torch.cuda.is_available() else "cpu"
@@ -68,7 +69,14 @@ STEP_TEXT = {"face": "face: finding and aligning the face", "landmarks": "face: 
              "quality": "quality: quality check"}
 
 
-@spaces.GPU(duration=15)   # only the two DFD-FCG passes use the GPU (about 2 s); keeps visitors' quota use small
+def _gpu_seconds(crops, clip_idx):
+    """GPU time to book for one check: grows with the number of DFD-FCG passes (faces x clips x views + blur test).
+    ZeroGPU checks the booked time against the visitor's remaining quota, so it is kept close to the real need."""
+    passes = len(crops) * len(clip_idx) * (3 if FLIP_TTA else 2)
+    return int(min(90, 10 + 0.5 * passes))
+
+
+@spaces.GPU(duration=_gpu_seconds)   # only the DFD-FCG passes use the GPU; face finding stays on the CPU
 def _run_gpu(crops, clip_idx):
     return AN.infer(crops, clip_idx)
 
@@ -128,7 +136,7 @@ def analyze(file, degrade="none", progress=gr.Progress()):
             raise gr.Error(f"The video could not be processed ({type(e).__name__}). Please try another video.") from None
         t_model = time.time()
         try:
-            (base, probed, model_s), used = _model_passes(st, progress)        # DFD-FCG + blur test
+            (outs, model_s), used = _model_passes(st, progress)        # DFD-FCG (+ mirrored view) + blur test
         except gr.Error:
             raise
         except Exception as e:  # noqa: BLE001
@@ -136,7 +144,7 @@ def analyze(file, degrade="none", progress=gr.Progress()):
             raise gr.Error(f"The analysis failed ({type(e).__name__}). Please try again.") from None
         model_wall = round(time.time() - t_model, 1)
         progress(1.0, desc=STEP_TEXT["quality"])
-        res = AN.finish(st, base, probed, model_s)
+        res = AN.finish(st, outs, model_s)
         res["meta"]["gpu_seconds" if used == "cuda" else "cpu_model_seconds"] = model_wall
         res["meta"]["seconds"] = round(time.time() - t, 1)
         res["meta"]["device"] = used
@@ -181,7 +189,8 @@ def ui_check(video, degrade, progress=gr.Progress()):
     res = analyze(video, {"As it is": "none", "Add strong blur": "blur", "Add heavy compression": "compress"}[degrade],
                   progress)
     fake = res["verdict"] == "FAKE"
-    md = (f"## {'🔴 Looks like a deepfake' if fake else '🟢 Looks like a real video'}\n"
+    md = (f"## {'🔴 Looks like a deepfake' if fake else '🟢 Looks like a real video'}"
+          f"{'' if res['sure'] else ' (not sure)'}\n"
           f"**{res['p'] * 100:.0f}% fake** after the quality correction "
           f"(original DFD-FCG: {res['p_original'] * 100:.0f}%). Blur test: {res['blur_response'][2]:+.2f} "
           f"(real faces usually react with a positive number).")

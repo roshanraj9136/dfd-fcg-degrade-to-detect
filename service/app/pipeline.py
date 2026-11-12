@@ -2,11 +2,20 @@
 One uploaded video -> verdict + a short, honest explanation.
 
 Steps (each reported to the user):
-  1. find and align the face        (2D-FAN landmarks, the DFD-FCG / RealForensics alignment)
+  1. find and align the face(s)     (S3FD + 2D-FAN landmarks, the DFD-FCG / RealForensics alignment)
   2. run DFD-FCG                    (released checkpoint, exact per-patch attribution)
   3. quality check                  (self-calibration: the model's own features estimate how much
                                      FAKE evidence the video's blur / compression added; removed)
   4. blur test                      (one extra pass on the face blurred by 2 px)
+
+Accuracy settings (environment variables, defaults = the live website, chosen on 117 separate FF++ / DFDC videos that
+are in no reported result, see results/accuracy_study.md):
+  CLIPS=8, WINDOW_SEC=10   8 evenly spaced 3-s clips from the first 10 s of the video (the research run used
+                           2 clips from the first 144 frames; CLIPS=2 WINDOW_SEC=0 gives exactly that layout)
+  MAX_FACES=2              every large face that is in the video most of the time is checked; the most
+                           suspicious one decides the verdict (a swap may be on either person)
+  FLIP_TTA=0               1 = also check each clip mirrored and average (tested: it did not help, worse on blur)
+  CERT_MARGIN=0.16         the answer is "sure" when the corrected score is at least 16 points from the 0.5 line
 
 Speed-up for CPU hosting: the face detector runs on every 12th frame and the landmarks on every
 3rd frame (plus every frame the model uses); the landmark smoothing then averages the available
@@ -17,6 +26,7 @@ import copy
 import json
 import math
 import os
+import tempfile
 import time
 from pathlib import Path
 
@@ -25,15 +35,25 @@ import numpy as np
 import torch
 
 from qa import probes
-from qa.conditions import build
-from qa.config import CROP_SIZE, MAX_FRAMES, TARGET_SIZE
+from qa.conditions import FRAME_FN, FULL_FRAME, _seed, _x264, _xvid_then_x264, shift_M
+from qa.config import (CROP_SIZE, DATA, MAX_FRAMES, NUM_FRAMES, PERTURB_PARAMS, SMOOTH_MARGIN, STRIDE_SEC,
+                       TARGET_SIZE)
 from qa.engine import FACE_PARTS, Recorder, analyse, load_model
-from qa.prep import MEAN_FACE, STABLE_POINTS, clip_layout, read_frames, roi_for
+from qa.prep import MEAN_FACE, STABLE_POINTS, crop, roi_for
 
 MODEL_JSON = Path(os.environ.get("DFD_MODEL_JSON", Path(__file__).resolve().parent / "model.json"))
 DET_EVERY = int(os.environ.get("DET_EVERY", "12"))
 LM_EVERY = int(os.environ.get("LM_EVERY", "3"))
+CLIPS = int(os.environ.get("CLIPS", "8"))
+WINDOW_SEC = float(os.environ.get("WINDOW_SEC", "10"))
+MAX_FACES = int(os.environ.get("MAX_FACES", "2"))
+FLIP_TTA = os.environ.get("FLIP_TTA", "0") == "1"
+CERT_MARGIN = float(os.environ.get("CERT_MARGIN", "0.16"))   # "sure" limits (see certainty())
+CERT_AGREE = float(os.environ.get("CERT_AGREE", "0"))
+MAX_WINDOW_FRAMES = 360          # memory cap (high-fps videos): 6 s at 60 fps
 DET_RES = 800
+SECOND_FACE_PRESENCE = 0.8       # an extra face must be found in 80% of the detector frames ...
+SECOND_FACE_SIZE = 0.5           # ... and be at least half as wide as the main face
 REGIONS = ["eyes", "nose", "lips", "skin"]
 LM_GROUPS = {"eyes": list(range(36, 48)) + list(range(17, 27)), "nose": list(range(27, 36)),
              "lips": list(range(48, 68))}
@@ -67,6 +87,33 @@ def _warm_numba():
     from face_alignment.utils import get_preds_fromhm
     hm = np.random.rand(1, 68, 64, 64).astype(np.float32)
     get_preds_fromhm(hm, np.array([100.0, 100.0]), np.float64(1.5))
+
+
+def window_frames(fps_int, window_sec=None):
+    """How many frames are read: WINDOW_SEC seconds (never fewer than the research run's 144 frames)."""
+    window_sec = WINDOW_SEC if window_sec is None else window_sec
+    return int(min(MAX_WINDOW_FRAMES, max(MAX_FRAMES, round(window_sec * fps_int))))
+
+
+def clip_layout(fps_int, n, clips=None, max_frames=None):
+    """Frame indices of the clips (K, 10). Same offsets as the upstream demo; with clips=2 and max_frames=144 this
+    is exactly qa.prep.clip_layout (the research run)."""
+    clips = CLIPS if clips is None else clips
+    offsets = np.array([int(math.floor(i * STRIDE_SEC * fps_int)) for i in range(NUM_FRAMES)])
+    usable = min(n, max_frames or n) - SMOOTH_MARGIN
+    n_avail = usable - offsets[-1]
+    if n_avail <= 0:
+        raise NoFace("the video is too short: at least 4 seconds are needed")
+    starts = np.unique(np.linspace(0, n_avail - 1, clips).round().astype(int))
+    return np.stack([s + offsets for s in starts])
+
+
+def _centre(b):
+    return np.array([(b[0] + b[2]) / 2, (b[1] + b[3]) / 2])
+
+
+def _width(b):
+    return max(b[2] - b[0], b[3] - b[1])
 
 
 class Analyzer:
@@ -107,43 +154,86 @@ class Analyzer:
         return twin
 
     # ------------------------------------------------------------------ face
-    def _landmarks(self, frames, needed, progress):
-        h, w = frames[0].shape[:2]
-        s = DET_RES / max(h, w) if max(h, w) > DET_RES else 1.0
-        small = [cv2.cvtColor(cv2.resize(f, None, fx=s, fy=s), cv2.COLOR_BGR2RGB) if s != 1.0
-                 else cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in frames]
-        n = len(frames)
-        # 1. detector on a sparse grid; follow the largest face
-        boxes, prev = {}, None
+    @staticmethod
+    def read(path, window_sec=None):
+        """First WINDOW_SEC seconds, downscaled to DET_RES for the face models (full frames are re-read later)."""
+        cap = cv2.VideoCapture(str(path))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        fps_int = int(round(fps)) if fps and fps > 1 else 30
+        limit = window_frames(fps_int, window_sec)
+        small, s, hw = [], 1.0, None
+        while len(small) < limit:
+            ok, fr = cap.read()
+            if not ok:
+                break
+            if hw is None:
+                hw = fr.shape[:2]
+                s = DET_RES / max(hw) if max(hw) > DET_RES else 1.0
+            small.append(cv2.cvtColor(cv2.resize(fr, None, fx=s, fy=s) if s != 1.0 else fr, cv2.COLOR_BGR2RGB))
+        cap.release()
+        return small, fps_int, s, hw
+
+    def find_faces(self, small, needed, progress=lambda step, frac: None, max_faces=None):
+        """Detector on a sparse grid. Face 1 is the one the research-matched website always used (largest face at
+        the first detection, then the nearest face in each frame). Further faces are followed the same way among the
+        remaining detections, without ever jumping across the frame, and are kept only if they are large and
+        present most of the time. Returns [{frame: box}] (box in `small` coordinates), main face first."""
+        max_faces = MAX_FACES if max_faces is None else max_faces
+        n = len(small)
         det_frames = sorted(set(range(0, n, DET_EVERY)) | {int(needed[0])})
+        free = {}
         for k, i in enumerate(det_frames):
             d = self.fa.face_detector.detect_from_image(small[i].copy())
-            d = [b for b in d if b[4] > 0.5]
-            if d:
+            free[i] = [np.asarray(b[:4], float) for b in d if b[4] > 0.5]
+            progress("face", 0.3 * (k + 1) / len(det_frames))
+        faces = []
+        for f in range(max_faces):
+            boxes, prev = {}, None
+            for i in det_frames:
+                cand = free[i]
+                if not cand:
+                    continue
                 if prev is None:
-                    b = max(d, key=lambda b: (b[2] - b[0]) * (b[3] - b[1]))
+                    j = int(np.argmax([(b[2] - b[0]) * (b[3] - b[1]) for b in cand]))
                 else:
-                    c = np.array([(prev[0] + prev[2]) / 2, (prev[1] + prev[3]) / 2])
-                    b = min(d, key=lambda b: np.linalg.norm(np.array([(b[0] + b[2]) / 2, (b[1] + b[3]) / 2]) - c))
-                boxes[i] = np.asarray(b[:4], float)
+                    dist = [np.linalg.norm(_centre(b) - _centre(prev)) for b in cand]
+                    j = int(np.argmin(dist))
+                    if f > 0 and dist[j] > _width(prev):
+                        continue
+                boxes[i] = cand.pop(j)
                 prev = boxes[i]
-            progress("face", 0.4 * (k + 1) / len(det_frames))
-        if len(boxes) < 0.6 * len(det_frames):
-            raise NoFace("no clear face was found in most of the video")
+            if f == 0:
+                if len(boxes) < 0.6 * len(det_frames):
+                    raise NoFace("no clear face was found in most of the video")
+            else:
+                if len(boxes) < SECOND_FACE_PRESENCE * len(det_frames):
+                    continue
+                size = np.median([_width(b) for b in boxes.values()])
+                if size < SECOND_FACE_SIZE * np.median([_width(b) for b in faces[0].values()]):
+                    continue
+                keys = np.array(sorted(boxes))
+                if any(np.abs(keys - int(x)).min() > DET_EVERY for x in needed):
+                    continue          # this person is missing in part of the clips the model reads
+            faces.append(boxes)
+        return faces
+
+    def landmarks(self, small, s, boxes, needed, progress=lambda step, frac: None):
+        """2D-FAN on every LM_EVERY-th frame near a model frame (the +-6 smoothing window) and on every model frame;
+        each frame uses the box of the nearest detector frame. Returns {frame: (68,2)} in full-resolution pixels."""
+        n = len(small)
+        need = np.asarray(needed, int)
+        lm_frames = sorted({i for i in range(0, n, LM_EVERY) if np.abs(need - i).min() <= SMOOTH_MARGIN}
+                           | {int(x) for x in needed})
         keys = np.array(sorted(boxes))
-        # 2. landmarks on every LM_EVERY-th frame and on every frame the model will read (batched FAN)
-        lm_frames = sorted(set(range(0, n, LM_EVERY)) | {int(x) for x in needed})
-        progress("landmarks", 0.4)
         near = [boxes[int(keys[np.argmin(np.abs(keys - i))])] for i in lm_frames]
-        pts = self._fan_batch([small[i] for i in lm_frames], near,
-                              on_batch=lambda f: progress("face", 0.4 + 0.6 * f))
+        pts = self._fan_batch([small[i] for i in lm_frames], near, on_batch=lambda f: progress("landmarks", f))
         return {i: p / s for i, p in zip(lm_frames, pts)}
 
     @torch.no_grad()
     def _fan_batch(self, imgs, boxes, batch=16, on_batch=lambda frac: None):
         """2D-FAN landmarks for many (image, box) pairs in batches. Same crop, network and heat-map decoding as
         face_alignment.FaceAlignment.get_landmarks_from_image (flip_input=False), one network call per batch."""
-        from face_alignment.utils import CENTER_Y_OFFSET, crop, get_preds_fromhm
+        from face_alignment.utils import CENTER_Y_OFFSET, crop as fa_crop, get_preds_fromhm
         ref = self.fa.face_detector.reference_scale
         centers, scales, crops = [], [], []
         for img, d in zip(imgs, boxes):
@@ -152,7 +242,7 @@ class Analyzer:
             sc = (d[2] - d[0] + d[3] - d[1]) / ref
             centers.append(c)
             scales.append(sc)
-            crops.append(crop(img, c, sc).transpose((2, 0, 1)).astype(np.float32) / 255.0)
+            crops.append(fa_crop(img, c, sc).transpose((2, 0, 1)).astype(np.float32) / 255.0)
         x = torch.from_numpy(np.stack(crops))
         heat = []
         for k in range(0, len(x), batch):
@@ -190,14 +280,84 @@ class Analyzer:
             crop_lms.append(tl - [lx, uy])
         return np.array(Ms), np.array(offs), np.array(crop_lms)
 
+    def geometry(self, small, s, hw, needed, progress=lambda step, frac: None, max_faces=None):
+        """Faces -> per-face alignment for every model frame: [dict(M, off, crop_lm, roi)]."""
+        faces = self.find_faces(small, needed, progress, max_faces)
+        h, w = hw
+        out = []
+        for k, boxes in enumerate(faces):
+            lms = self.landmarks(small, s, boxes, needed,
+                                 lambda st, f: progress("landmarks", 0.3 + 0.7 * (k + f) / len(faces)))
+            Ms, offs, clms = self._transforms(lms, needed, len(small))
+            out.append(dict(M=Ms, off=offs, crop_lm=clms, roi=roi_for(Ms, offs, h, w)))
+        return out
+
+    @staticmethod
+    def crops(path, fps_int, n_read, needed, geo, conds, vid="upload"):
+        """Aligned 150x150 RGB face crops of every face, for each condition: {cond: [crops (n_needed,150,150,3)]}.
+        Same pixels as qa.conditions.build (authors' robustness protocol: the clean geometry is reused, the
+        degradation is applied to the video first), but the video is read once and only the face regions are kept."""
+        rois = [g["roi"] for g in geo]
+        degraded = [c for c in conds if c != "clean"]
+        need_set = {int(i) for i in needed}
+        clean_src = [dict() for _ in geo]
+        deg_src = {c: [[] for _ in geo] for c in degraded}
+        if degraded:
+            _seed(vid, degraded[0])       # exact for one condition (the website); GB and VC use no random numbers
+        cap = cv2.VideoCapture(str(path))
+        i = 0
+        while i < n_read:
+            ok, fr = cap.read()
+            if not ok:
+                break
+            for k, (x0, y0, x1, y1) in enumerate(rois):
+                if i in need_set:
+                    clean_src[k][i] = np.ascontiguousarray(fr[y0:y1, x0:x1])
+            for c in degraded:
+                kind, lv = c.split("_")
+                if kind in FULL_FRAME:                         # geometry-dependent: whole frame first, then cut
+                    g = FRAME_FN[kind](fr.copy(), PERTURB_PARAMS[kind][int(lv) - 1])
+                    for k, (x0, y0, x1, y1) in enumerate(rois):
+                        deg_src[c][k].append(np.ascontiguousarray(g[y0:y1, x0:x1]))
+                else:
+                    for k, (x0, y0, x1, y1) in enumerate(rois):
+                        deg_src[c][k].append(np.ascontiguousarray(fr[y0:y1, x0:x1]))
+            i += 1
+        cap.release()
+        out = {}
+        os.makedirs(DATA / "tmp", exist_ok=True)
+        for c in conds:
+            per_face = []
+            for k, g in enumerate(geo):
+                x0, y0 = g["roi"][:2]
+                if c == "clean":
+                    src = [clean_src[k][int(f)] for f in needed]
+                else:
+                    kind, lv = c.split("_")
+                    _seed(vid, c)
+                    frames = deg_src[c][k]
+                    with tempfile.TemporaryDirectory(dir=DATA / "tmp") as tmpdir:
+                        if kind == "VC":
+                            rf = _x264(frames, fps_int, PERTURB_PARAMS["VC"][int(lv) - 1], os.path.join(tmpdir, "vc.mp4"))
+                        else:
+                            if kind not in FULL_FRAME:
+                                frames = [np.ascontiguousarray(FRAME_FN[kind](f.copy(), PERTURB_PARAMS[kind][int(lv) - 1]))
+                                          for f in frames]
+                            rf = _xvid_then_x264(frames, fps_int, tmpdir)
+                    src = [rf[int(f)] for f in needed]
+                per_face.append(np.stack([cv2.cvtColor(crop(sf, shift_M(M, x0, y0), off), cv2.COLOR_BGR2RGB)
+                                          for sf, M, off in zip(src, g["M"], g["off"])]))
+            out[c] = per_face
+        return out
+
     # ------------------------------------------------------------------ main
     def run(self, path, degrade=None, progress=lambda step, frac: None):
         """Whole check in one process (CPU service, local GPU)."""
         st = self.prepare(path, degrade, progress)
-        return self.finish(st, *self.infer(st["crops"], st["clip_idx"], progress))
+        return self.finish(st, *self.infer(st["crops"], st["clip_idx"], progress=progress))
 
     def prepare(self, path, degrade=None, progress=lambda step, frac: None):
-        """CPU part: read the video, find and align the face, build the (optionally degraded) face crops."""
+        """CPU part: read the video, find and align the face(s), build the (optionally degraded) face crops."""
         t0 = time.time()
         marks, report = {}, progress
 
@@ -205,83 +365,136 @@ class Analyzer:
             marks.setdefault(step, round(time.time() - t0, 2))
             report(step, frac)
 
-        frames, fps = read_frames(path, MAX_FRAMES)
+        small, fps_int, s, hw = self.read(path)
         marks["read"] = round(time.time() - t0, 2)
-        if not frames:
+        if not small:
             raise NoFace("the file could not be read as a video")
-        fps_int = int(round(fps)) if fps and fps > 1 else 30
-        n = len(frames)
-        try:
-            layout = clip_layout(fps_int, n)
-        except RuntimeError:
-            raise NoFace("the video is too short: at least 4 seconds are needed")
+        n = len(small)
+        layout = clip_layout(fps_int, n, CLIPS, window_frames(fps_int))
         needed = np.unique(layout)
         progress("face", 0.0)
-        lms = self._landmarks(frames, needed, progress)
-        Ms, offs, clms = self._transforms(lms, needed, n)
-        h, w = frames[0].shape[:2]
-        prep = dict(fps=fps_int, n_frames=n, size=np.array([h, w]), layout=layout, needed=needed,
-                    M=Ms, off=offs, crop_lm=clms, roi=roi_for(Ms, offs, h, w))
-        del frames
+        geo = self.geometry(small, s, hw, needed, progress)
+        del small
         marks["landmarks_done"] = round(time.time() - t0, 2)
         cond = {"blur": "GB_5", "compress": "VC_5"}.get(degrade or "", "clean")
-        crops = build(path, prep, "upload", [cond])[cond][0]
+        crops = self.crops(path, fps_int, int(needed.max()) + 1 if cond == "clean" else n, needed, geo, [cond])[cond]
         marks["crops_done"] = round(time.time() - t0, 2)
         pos = {f: i for i, f in enumerate(needed)}
         clip_idx = np.array([[pos[f] for f in c] for c in layout])
-        return dict(t0=t0, marks=marks, crops=crops, clip_idx=clip_idx, clms=clms, fps=fps_int, needed=needed,
-                    w=w, h=h, degrade=degrade)
+        h, w = hw
+        return dict(t0=t0, marks=marks, crops=crops, clip_idx=clip_idx, clms=[g["crop_lm"] for g in geo],
+                    fps=fps_int, needed=needed, w=w, h=h, degrade=degrade, seconds_covered=round(n / fps_int, 1))
 
-    def infer(self, crops, clip_idx, progress=lambda step, frac: None):
-        """GPU part: DFD-FCG with exact attribution on the face crops, then on the same crops blurred by 2 px."""
-        def forward(x, step):
+    def infer(self, crops, clip_idx, flip=None, probe=True, progress=lambda step, frac: None):
+        """GPU part. For every face: DFD-FCG with exact attribution on the clips, the same clips mirrored (FLIP_TTA),
+        and the blur test (the clips blurred by 2 px). Returns ([per-face dict], model seconds)."""
+        flip = FLIP_TTA if flip is None else flip
+        bs = int(os.environ.get("MODEL_BATCH", "4" if self.device == "cuda" else "2"))
+        kinds = [("base", False)] + ([("flip", False)] if flip else []) + ([("base", True)] if probe else [])
+        total = len(crops) * len(kinds) * len(clip_idx)
+        done = [0]
+
+        def forward(x, step, full):
             out = []
-            for k, ci in enumerate(clip_idx):
-                fr = torch.from_numpy(np.ascontiguousarray(x[ci])).permute(0, 3, 1, 2).contiguous()
+            for k in range(0, len(clip_idx), bs):
+                batch = [self.model.transform(torch.from_numpy(np.ascontiguousarray(x[ci])).permute(0, 3, 1, 2)
+                                              .contiguous()) for ci in clip_idx[k:k + bs]]
                 with torch.inference_mode():
-                    out += analyse(self.model, self.rec, self.model.transform(fr)[None], fp16=self.fp16)
-                progress(step, (k + 1) / len(clip_idx))
+                    res = analyse(self.model, self.rec, torch.stack(batch), fp16=self.fp16)
+                keep = ("d", "y_s", "y_t", "cs_patch", "cs_lq") if full else ("d", "y_s", "y_t")
+                out += [{key: r[key] for key in keep} for r in res]
+                done[0] += len(batch)
+                progress(step, done[0] / total)
             return out
 
         t = time.time()
         progress("model", 0.0)
-        base = forward(crops, "model")
-        progress("blur", 0.0)
-        probed = forward(probes.apply("pB2", crops), "blur")
-        keep = ("d", "y_s", "y_t", "cs_patch", "cs_lq")              # only what the explanation needs
-        slim = lambda rs: [{k: r[k] for k in keep} for r in rs]      # noqa: E731
-        return slim(base), slim(probed), round(time.time() - t, 2)
+        result = []
+        for fc in crops:
+            fo = {}
+            for view, is_probe in kinds:
+                x = fc[:, :, ::-1] if view == "flip" else fc
+                if is_probe:
+                    x = probes.apply("pB2", np.ascontiguousarray(x))
+                fo[view + ("_probe" if is_probe else "")] = forward(x, "blur" if is_probe else "model",
+                                                                    full=view == "base" and not is_probe)
+            result.append(fo)
+        return result, round(time.time() - t, 2)
 
-    def finish(self, st, base, probed, model_seconds=None):
-        """CPU part: self-calibration, strict mode, explanation."""
-        marks, t0, clip_idx, clms = st["marks"], st["t0"], st["clip_idx"], st["clms"]
-        d = np.stack([r["d"] for r in base])                                     # (K,3)
-        y = np.stack([np.r_[r["y_s"], r["y_t"]] for r in base])
-        g = ((y - self.mu) / self.sd) @ self.W.T + self.b                        # spurious evidence
-        r = np.stack([p["d"] for p in probed]) - d
+    def readout(self, rows):
+        """Per-clip head logits d (K,3) and the self-calibration's spurious evidence g (K,3)."""
+        d = np.stack([r["d"] for r in rows])
+        y = np.stack([np.r_[r["y_s"], r["y_t"]] for r in rows])
+        return d, ((y - self.mu) / self.sd) @ self.W.T + self.b
+
+    @staticmethod
+    def prob(D):
+        """DFD-FCG's video score: mean over clips (and views) of the mean of the three head sigmoids."""
+        return float(np.mean([np.mean([sig(v) for v in row]) for row in D]))
+
+    def face_scores(self, fo):
+        """Scores of one face: original DFD-FCG, self-calibrated (the verdict) and strict, averaged over the views.
+        The blur test response r of a clip (measured on the normal view) is used for its mirrored view too."""
+        d0, g0 = self.readout(fo["base"])
+        r0 = np.stack([p["d"] for p in fo["base_probe"]]) - d0 if "base_probe" in fo else np.zeros_like(d0)
+        D, G, R = [d0], [g0], [r0]
+        if "flip" in fo:
+            d1, g1 = self.readout(fo["flip"])
+            D.append(d1)
+            G.append(g1)
+            R.append(r0)
+        d, g, r = np.concatenate(D), np.concatenate(G), np.concatenate(R)
+        per = np.array([np.mean([sig(v) for v in row]) for row in d - g]).reshape(len(D), -1)
+        return dict(p_original=self.prob(d), p=self.prob(d - g), p_strict=self.prob(d - g - self.lam * r),
+                    d=d0, g=g0, r=r0, clip_p=per.mean(0), view_p=per)
+
+    def finish(self, st, outs, model_seconds=None):
+        """CPU part: self-calibration, strict mode, the most suspicious face, explanation."""
+        marks, t0, clip_idx = st["marks"], st["t0"], st["clip_idx"]
         marks["model_seconds"] = model_seconds
-        P = lambda D: float(np.mean([np.mean([sig(v) for v in row]) for row in D]))  # noqa: E731
-        p_orig, p_cal, p_strict = P(d), P(d - g), P(d - g - self.lam * r)
+        scores = [self.face_scores(fo) for fo in outs]
+        k = int(np.argmax([sc["p"] for sc in scores]))
+        sc, base = scores[k], outs[k]["base"]
 
-        # explanation: where the spatial head saw FAKE evidence (exact per-patch split)
+        # explanation: where the spatial head saw FAKE evidence (exact per-patch split), on the deciding face
         sp = np.mean([x["cs_patch"] for x in base], 0)
-        lm = clms.mean(0)
+        lm = st["clms"][k].mean(0)
         reg = region_labels(lm)
-        region_ev = {k: float(sp[reg == k].sum()) for k in REGIONS}
-        face = st["crops"][clip_idx[0][0]]
+        region_ev = {name: float(sp[reg == name].sum()) for name in REGIONS}
+        face = st["crops"][k][clip_idx[0][0]]
+        p_orig, p_cal, p_strict = sc["p_original"], sc["p"], sc["p_strict"]
+        fps, needed = st["fps"], st["needed"]
+        timeline = [dict(start=round(float(needed[ci[0]]) / fps, 2), end=round(float(needed[ci[-1]]) / fps, 2),
+                         p=float(sc["clip_p"][j]), faces=[float(s["clip_p"][j]) for s in scores])
+                    for j, ci in enumerate(clip_idx)]
+        sure = certainty(p_cal, sc["view_p"])
         return dict(
             verdict="FAKE" if p_cal >= 0.5 else "REAL",
-            p=p_cal, p_original=p_orig, p_strict=p_strict,
+            p=p_cal, p_original=p_orig, p_strict=p_strict, **sure,
             verdict_original="FAKE" if p_orig >= 0.5 else "REAL",
-            quality_shift=p_orig - p_cal, spurious_logit=g.mean(0).tolist(),
-            blur_response=r.mean(0).tolist(), heads=d.mean(0).tolist(),
+            quality_shift=p_orig - p_cal, spurious_logit=sc["g"].mean(0).tolist(),
+            blur_response=sc["r"].mean(0).tolist(), heads=sc["d"].mean(0).tolist(),
             regions=region_ev, parts=dict(zip(FACE_PARTS, np.mean([x["cs_lq"].sum(0) for x in base], 0).tolist())),
+            faces=[dict(p=s["p"], p_original=s["p_original"], p_strict=s["p_strict"]) for s in scores],
+            timeline=timeline,
             face_png=png64(cv2.resize(face, (300, 300), interpolation=cv2.INTER_CUBIC)),
             heat_png=png64(heat_overlay(face, sp)),
-            meta=dict(fps=st["fps"], frames_used=int(len(st["needed"])), clips=int(len(clip_idx)), width=int(st["w"]),
-                      height=int(st["h"]), degrade=st["degrade"] or "none", seconds=round(time.time() - t0, 1),
-                      timing=marks),
+            meta=dict(fps=st["fps"], frames_used=int(len(st["needed"])), clips=int(len(clip_idx)),
+                      faces_checked=len(outs), face_shown=k + 1, mirrored="flip" in outs[k],
+                      seconds_covered=st.get("seconds_covered"), width=int(st["w"]), height=int(st["h"]),
+                      degrade=st["degrade"] or "none", seconds=round(time.time() - t0, 1), timing=marks),
         )
+
+
+def certainty(p, view_p, margin=None, agree=None):
+    """Is the answer sure? The corrected score must be at least CERT_MARGIN away from the 0.5 line. (CERT_AGREE can
+    also require that this share of the clip checks is on the verdict's side; on the selection videos it added
+    nothing, so it is off.) Chosen on separate videos, not on any reported test video: results/accuracy_study.md."""
+    margin = CERT_MARGIN if margin is None else margin
+    agree = CERT_AGREE if agree is None else agree
+    v = np.asarray(view_p).ravel()
+    same = float(np.mean((v >= 0.5) == (p >= 0.5)))
+    return dict(sure=bool(abs(p - 0.5) >= margin and same >= agree), agreement=same, margin=abs(p - 0.5))
 
 
 def region_labels(lm, grid=16, crop=150, near=12.0):

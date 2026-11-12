@@ -247,11 +247,11 @@ export function SystemFig() {
       <Box x={540} y={30} w={340} h={260} fill="#fffbeb" stroke={C.amber} />
       <T x={558} y={56} size={12} w={700} color={C.amber}>HUGGING FACE SPACE · ZEROGPU</T>
       <T x={558} y={80} size={16} w={800} color={C.ink}>Checker backend (Gradio API)</T>
-      {step(96, "1", "find and align the face")}
-      {step(132, "2", "DFD-FCG, authors' weights", false, "GPU")}
+      {step(96, "1", "find and align every face")}
+      {step(132, "2", "DFD-FCG, 8 clips per face", false, "GPU")}
       {step(168, "3", "self-calibration (my add-on)", true)}
       {step(204, "4", "blur test (my add-on)", true, "GPU")}
-      {step(240, "5", "evidence map → explanation")}
+      {step(240, "5", "sure / not sure + evidence map", true)}
       <Arrow d="M480 104 H 536" />
       <T x={508} y={96} size={11.5} color={C.muted} anchor="middle">video</T>
       <Arrow d="M538 150 H 484" />
@@ -471,6 +471,137 @@ export function FixFig() {
       <T x={922} y={108} size={13} w={700} color={C.ink} anchor="middle">same 0.5 line</T>
       <T x={922} y={128} size={12.5} anchor="middle">REAL / FAKE</T>
       <T x={500} y={28} size={13} color={C.muted} anchor="middle" italic>DFD-FCG itself is not changed. The add-on is 3 × 1280 weights and runs in under a millisecond.</T>
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ version 2 of the live checker */
+/** What version 2 adds around the same model: every person, 10 seconds, and an honest "not sure". */
+export function V2Fig() {
+  const clip = (x: number, y: number, on: boolean, k: number) => (
+    <rect key={k} x={x} y={y} width={22} height={30} rx={4} fill={on ? C.brandSoft : C.panel} stroke={on ? C.brand : "#cbd5e1"} />
+  );
+  return (
+    <svg viewBox="0 0 1180 330" className="w-full min-w-[900px]" role="img" aria-label="What version 2 of the checker does">
+      <Defs />
+      {/* video with two people */}
+      <Box x={16} y={40} w={230} h={170} />
+      <T x={32} y={66} size={12} w={700} color={C.muted}>UPLOADED VIDEO</T>
+      <rect x={32} y={78} width={198} height={116} rx={10} fill="#e0e7ff" />
+      <Face x={92} y={138} s={0.95} />
+      <Face x={172} y={138} s={0.95} tint="#f5d0a9" />
+      <T x={131} y={238} size={12.5} color={C.muted} anchor="middle">first 10 seconds are read</T>
+
+      {/* step 1: every face */}
+      <Arrow d="M250 125 H 300" />
+      <Box x={304} y={30} w={250} h={196} fill={C.brandSoft} stroke={C.brand} />
+      <T x={320} y={56} size={12} w={800} color={C.brand}>1 · EVERY PERSON (NEW)</T>
+      <T x={320} y={80} size={13} color={C.text}>Each clear face that stays in</T>
+      <T x={320} y={98} size={13} color={C.text}>the video is tracked and aligned</T>
+      <Face x={372} y={160} s={0.8} />
+      <Face x={486} y={160} s={0.8} tint="#f5d0a9" />
+      <T x={372} y={210} size={12} w={700} color={C.ink} anchor="middle">person 1</T>
+      <T x={486} y={210} size={12} w={700} color={C.ink} anchor="middle">person 2</T>
+
+      {/* step 2: 8 clips each */}
+      <Arrow d="M558 125 H 600" />
+      <Box x={604} y={30} w={270} h={196} />
+      <T x={620} y={56} size={12} w={800} color={C.brand}>2 · 8 CLIPS EACH (WAS 2)</T>
+      <T x={620} y={80} size={13} color={C.text}>DFD-FCG + my quality correction</T>
+      <T x={620} y={98} size={13} color={C.text}>on 8 clips spread over 10 s</T>
+      {Array.from({ length: 8 }, (_, i) => clip(620 + i * 30, 120, true, i))}
+      {Array.from({ length: 8 }, (_, i) => clip(620 + i * 30, 168, true, 10 + i))}
+      <T x={620} y={218} size={11.5} color={C.muted}>top row: person 1 · bottom row: person 2</T>
+
+      {/* step 3: decide */}
+      <Arrow d="M878 125 H 920" />
+      <Box x={924} y={30} w={240} h={196} fill="#fffbeb" stroke={C.amber} />
+      <T x={940} y={56} size={12} w={800} color={C.amber}>3 · DECIDE, HONESTLY (NEW)</T>
+      <T x={940} y={80} size={13} color={C.text}>The more suspicious person</T>
+      <T x={940} y={98} size={13} color={C.text}>decides (a swap can be on either)</T>
+      <rect x={940} y={116} width={208} height={40} rx={20} fill={C.fakeSoft} stroke="#fca5a5" />
+      <T x={1044} y={141} size={14} w={800} color={C.fake} anchor="middle">FAKE · sure</T>
+      <rect x={940} y={166} width={208} height={40} rx={20} fill="#fef3c7" stroke="#fcd34d" />
+      <T x={1044} y={191} size={14} w={800} color={C.amber} anchor="middle">probably FAKE · not sure</T>
+      <T x={590} y={290} size={13} color={C.muted} anchor="middle" italic>
+        Same model, same weights, same quality correction. Only how much of the video is read, which faces are checked,
+      </T>
+      <T x={590} y={310} size={13} color={C.muted} anchor="middle" italic>
+        and when the answer is flagged as “not sure” are new. Nothing was retrained.
+      </T>
+    </svg>
+  );
+}
+
+/** How the version-2 settings were chosen without looking at the reported test videos. */
+export function ProtocolFig({ select, test }: { select: number; test: number }) {
+  return (
+    <svg viewBox="0 0 1180 230" className="w-full min-w-[900px]" role="img" aria-label="How the settings were chosen">
+      <Defs />
+      <Box x={16} y={30} w={300} h={150} fill={C.panel} />
+      <T x={34} y={58} size={12} w={800} color={C.muted}>STEP 1 · SEPARATE VIDEOS</T>
+      <T x={34} y={88} size={22} w={800} color={C.ink}>{select} videos</T>
+      <T x={34} y={112} size={13}>FF++ test videos not in my results</T>
+      <T x={34} y={131} size={13}>+ 20 new DFDC real/fake pairs</T>
+      <T x={34} y={158} size={12.5} color={C.muted} italic>never used for any reported number</T>
+      <Arrow d="M320 105 H 380" />
+      <Box x={384} y={30} w={380} h={150} fill={C.brandSoft} stroke={C.brand} />
+      <T x={402} y={58} size={12} w={800} color={C.brand}>STEP 2 · CHOOSE THE SETTINGS THERE</T>
+      <T x={402} y={86} size={13.5} color={C.text}>• how many clips, how many seconds</T>
+      <T x={402} y={108} size={13.5} color={C.text}>• one face or every face</T>
+      <T x={402} y={130} size={13.5} color={C.text}>• mirrored clips: yes or no</T>
+      <T x={402} y={152} size={13.5} color={C.text}>• where “sure” starts (the margin)</T>
+      <Arrow d="M768 105 H 828" color="brand" />
+      <Box x={832} y={30} w={332} h={150} fill="#ecfdf5" stroke={C.real} />
+      <T x={850} y={58} size={12} w={800} color={C.real}>STEP 3 · TEST ONCE</T>
+      <T x={850} y={88} size={22} w={800} color={C.ink}>{test} videos</T>
+      <T x={850} y={112} size={13}>the same FF++, FaceShifter and DFDC</T>
+      <T x={850} y={131} size={13}>test videos as all earlier results,</T>
+      <T x={850} y={150} size={13}>3 website options each</T>
+      <T x={590} y={214} size={13} color={C.muted} anchor="middle" italic>
+        The test videos were run only after every setting was fixed, so the test numbers cannot be tuned to look good.
+      </T>
+    </svg>
+  );
+}
+
+type CurvePt = { margin: number; all: { share: number | null; acc: number | null }; ffpp: { share: number | null; acc: number | null }; dfdc: { share: number | null; acc: number | null } };
+
+/** Accuracy of the answers marked "sure" against how many answers are marked "sure", for every margin. */
+export function CoverageFig({ curve, chosen }: { curve: CurvePt[]; chosen: number }) {
+  const W = 760, H = 330, L = 64, R = 24, Tp = 20, B = 54;
+  const x = (s: number) => L + (W - L - R) * s;
+  const y0 = 0.5;
+  const y = (a: number) => Tp + (H - Tp - B) * (1 - (a - y0) / (1 - y0));
+  const line = (k: "ffpp" | "dfdc" | "all") => curve.filter((c) => c[k].share != null && c[k].acc != null && c[k].share! > 0.02)
+    .map((c, i) => `${i ? "L" : "M"}${x(c[k].share!).toFixed(1)} ${y(c[k].acc!).toFixed(1)}`).join(" ");
+  const pick = curve.reduce((a, c) => (Math.abs(c.margin - chosen) < Math.abs(a.margin - chosen) ? c : a), curve[0]);
+  const series: ["ffpp" | "dfdc" | "all", string, string][] = [["ffpp", C.brand, "FF++ (the paper's dataset)"], ["dfdc", C.amber, "DFDC (another dataset)"], ["all", C.ink, "all test answers"]];
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[600px]" role="img" aria-label="Accuracy of sure answers against the share of sure answers">
+      {[0.5, 0.6, 0.7, 0.8, 0.9, 1].map((a) => (
+        <g key={a}>
+          <line x1={L} x2={W - R} y1={y(a)} y2={y(a)} stroke={C.soft} />
+          <T x={L - 10} y={y(a) + 4} size={12} color={C.muted} anchor="end">{Math.round(a * 100)}%</T>
+        </g>
+      ))}
+      {[0, 0.25, 0.5, 0.75, 1].map((s) => (
+        <T key={s} x={x(s)} y={H - B + 20} size={12} color={C.muted} anchor="middle">{Math.round(s * 100)}%</T>
+      ))}
+      <T x={(L + W - R) / 2} y={H - 10} size={13} w={600} color={C.text} anchor="middle">share of answers the checker marks “sure”</T>
+      <text transform={`translate(16 ${(Tp + H - B) / 2}) rotate(-90)`} fontSize="13" fontWeight="600" fill={C.text} textAnchor="middle">accuracy of the “sure” answers</text>
+      {series.map(([k, col]) => <path key={k} d={line(k)} fill="none" stroke={col} strokeWidth={k === "all" ? 2 : 3} strokeDasharray={k === "all" ? "6 5" : undefined} />)}
+      {series.map(([k, col]) => pick[k].share != null && pick[k].acc != null && (
+        <circle key={k} cx={x(pick[k].share!)} cy={y(pick[k].acc!)} r="7" fill={col} stroke="#fff" strokeWidth="2.5" />
+      ))}
+      {series.map(([k, col, lab], i) => (
+        <g key={k} transform={`translate(${L + 16} ${H - B - 72 + i * 20})`}>
+          <line x1="0" x2="26" y1="-4" y2="-4" stroke={col} strokeWidth={k === "all" ? 2 : 3} strokeDasharray={k === "all" ? "6 5" : undefined} />
+          <T x={34} y={0} size={12.5} color={C.text}>{lab}</T>
+        </g>
+      ))}
+      <T x={W - R - 8} y={y(0.6)} size={12} color={C.muted} anchor="end" italic>dots: the margin the website uses (±{Math.round(chosen * 100)} points)</T>
+      <T x={W - R - 8} y={y(0.6) + 18} size={12} color={C.muted} anchor="end" italic>right end: every answer counted, no “not sure”</T>
     </svg>
   );
 }
