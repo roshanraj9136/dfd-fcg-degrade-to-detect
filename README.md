@@ -4,7 +4,10 @@ An extension of **DFD-FCG** (Han, Huang, Hua, Chen, *CVPR 2025*), the video deep
 frozen CLIP ViT-L/14. B.Tech project by Roshan Raj, building on our earlier exact-attribution study
 ([dfd-fcg-explainability](https://github.com/roshanraj9136/dfd-fcg-explainability)).
 
-**Website (Vercel):** https://dfd-fcg-degrade-to-detect.vercel.app · **API (Render):** https://dfd-fcg-degrade-to-detect-api.onrender.com/api/health · **Database:** Neon Postgres
+* **Video checker (Vercel):** https://dfd-fcg-degrade-to-detect.vercel.app · upload a face video, get REAL / FAKE and a short reason
+* **Viva guide (Vercel):** https://dfd-fcg-viva.vercel.app · the problem, the cause, the fix and the architecture in plain language
+* **Checker backend (Hugging Face ZeroGPU):** https://huggingface.co/spaces/roshan9136/dfd-fcg-checker
+* **Results API (Render):** https://dfd-fcg-degrade-to-detect-api.onrender.com/api/health · **Database:** Neon Postgres
 
 <!-- RESULTS-START -->
 ## Results at a glance
@@ -135,16 +138,37 @@ python tests/check_table.py      # every head logit == sum of its exact terms + 
 `python -m qa.run_video some_video.mp4 [--degrade GB_5]` runs the released model, the self-calibrated
 model and the probe on any video.
 
-### Deploying the website and API
+### Deploying
 
+```
+browser ── checker site (web/checker, Vercel) ──video──▶ Hugging Face Space, ZeroGPU (service/space)
+                                                           find face (CPU) → DFD-FCG + blur test (ZeroGPU, CPU fallback)
+                                                           → self-calibration → explanation
+                                                           ◀── weights from a private HF model repo (research use only)
+                                                           ──▶ Neon Postgres: anonymous log (table analyses)
+browser ── viva site (web/viva, Vercel) ──▶ results API (web/api, Render) ──read-only──▶ Neon Postgres (kv, videos)
+```
+
+* **Checker backend (Hugging Face Space on ZeroGPU):** `service/space/build.ps1` assembles the Space folder
+  (Gradio app + `service/app` pipeline + the `qa` modules it needs). Space secrets: `HF_TOKEN` (read access to
+  the private repo holding `weights.ckpt`, CLIP ViT-L/14 and the face-alignment weights) and `DATABASE_URL`
+  (a Neon role that may only insert into and count `analyses`). API: `/analyze` (file, degrade = none | blur |
+  compress) and `/health`, e.g. with `@gradio/client`. Face detection and alignment run on the Space's CPU; only
+  the two DFD-FCG passes (detector + blur test) book a ZeroGPU slot (`duration=15`, about 2 s used), which keeps
+  each visitor's free daily GPU quota for many checks. If ZeroGPU refuses (quota used up, no free GPU), the same
+  passes run on a CPU copy of the model loaded at startup: same scores, a few seconds slower. About 15–25 s per video.
+  Hugging Face only allows Gradio/Docker Spaces on free accounts with ZeroGPU; `service/Dockerfile` +
+  `service/app/main.py` is the same pipeline as a plain CPU FastAPI container (about 75 s per video on 2 vCPUs)
+  for any Docker host.
 * **Database (Neon Postgres):** tables `kv` and `videos`; `NEON_OWNER_URL=... python web/api/seed.py` loads
   `web/frontend/public/data`. The API only needs a read-only role.
 * **API (Render):** [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/roshanraj9136/dfd-fcg-degrade-to-detect)
   uses `render.yaml` (root `web/api`); set `DATABASE_URL` to the read-only Neon URL when asked. Live at
   https://dfd-fcg-degrade-to-detect-api.onrender.com (free plan: the first request after idle takes up to a minute).
   The same FastAPI app also runs on Vercel as a backup (`web/api/vercel.json`).
-* **Website (Vercel):** `web/frontend`, build `npm run build`, env `VITE_API_URL` = the API's base URL. All
-  results are also bundled as static JSON, so the site works without the API.
+* **Websites (Vercel):** `web/checker` (env `VITE_CHECKER_SPACE`, default `roshan9136/dfd-fcg-checker`) and
+  `web/viva` (static; its live-numbers button calls the Render API). The original research site with every
+  table and the per-video explorer is kept in `web/frontend` (env `VITE_API_URL`).
 
 ### Layout
 
@@ -163,7 +187,11 @@ qa/
   figures.py, export.py, report.py   figures, website data
   run_video.py                       any video, end to end
 tests/                               crop and exactness checks
-web/frontend                         React + Vite site (Vercel)
+service/app                          checker pipeline for uploaded videos (face → DFD-FCG → self-calibration → blur test)
+service/space                        Hugging Face Space (Gradio, ZeroGPU) wrapper; service/Dockerfile = CPU container
+web/checker                          upload-and-check site (Vercel)
+web/viva                             plain-language viva guide with SVG figures (Vercel)
+web/frontend                         original research site with all tables (React + Vite)
 web/api                              FastAPI (Render blueprint in render.yaml; also deployed on Vercel), reads Neon Postgres
 results/                             metrics.json, analysis.json, figures
 ```

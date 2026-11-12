@@ -133,8 +133,9 @@ def analyse(model, rec, clips, fp16=True, timing=None):
     t0 = time.time()
     m = model.model
     rec.reset()
-    with torch.autocast("cuda", dtype=torch.float16, enabled=fp16):
-        out = m(clips.cuda())
+    dev = next(m.parameters()).device
+    with torch.autocast("cuda", dtype=torch.float16, enabled=fp16 and dev.type == "cuda"):
+        out = m(clips.to(dev))
     model_p = out["logits"].float().softmax(-1)[:, FAKE].cpu().numpy()   # logits = log(mean softmax)
     if timing is not None:
         timing["forward"] = timing.get("forward", 0) + time.time() - t0
