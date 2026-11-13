@@ -41,7 +41,8 @@ from qa.config import (CROP_SIZE, DATA, MAX_FRAMES, NUM_FRAMES, PERTURB_PARAMS, 
 from qa.engine import FACE_PARTS, Recorder, analyse, load_model
 from qa.prep import MEAN_FACE, STABLE_POINTS, crop, roi_for
 
-MODEL_JSON = Path(os.environ.get("DFD_MODEL_JSON", Path(__file__).resolve().parent / "model.json"))
+_MJ = os.environ.get("DFD_MODEL_JSON", "model.json")           # relative names are looked up next to this file
+MODEL_JSON = Path(_MJ) if os.path.isabs(_MJ) else Path(__file__).resolve().parent / _MJ
 DET_EVERY = int(os.environ.get("DET_EVERY", "12"))
 LM_EVERY = int(os.environ.get("LM_EVERY", "3"))
 CLIPS = int(os.environ.get("CLIPS", "8"))

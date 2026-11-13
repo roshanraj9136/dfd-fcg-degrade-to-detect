@@ -58,8 +58,9 @@ def _fetch(name, dest, token):
 def ensure_models():
     token = os.environ.get("HF_TOKEN")
     ROOT.mkdir(parents=True, exist_ok=True)
-    ckpt = Path(os.environ.get("DFD_FCG_CKPT") or ROOT / "weights.ckpt")
-    _fetch("weights.ckpt", ckpt, token)
+    wfile = os.environ.get("WEIGHTS_FILE", "weights.ckpt")      # e.g. weights_ft_v1.ckpt for the fine-tuned model
+    ckpt = Path(os.environ.get("DFD_FCG_CKPT") or ROOT / wfile)
+    _fetch(wfile, ckpt, token)
     clip_dir = Path(os.path.expanduser("~/.cache/clip"))
     _fetch("clip/ViT-L-14.pt", clip_dir / "ViT-L-14.pt", token)
     hub = Path(os.environ.get("TORCH_HOME", os.path.expanduser("~/.cache/torch"))) / "hub" / "checkpoints"
