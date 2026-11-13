@@ -160,7 +160,7 @@ def analyze(file, degrade="none", progress=gr.Progress()):
             pass
 
 
-def health():
+def health() -> dict:    # the return type is required: without it gr.api returns an empty output
     """Service status and the number of videos checked so far."""
     total = None
     url = os.environ.get("DATABASE_URL")
