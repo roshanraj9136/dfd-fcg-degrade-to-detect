@@ -1,0 +1,11 @@
+{
+ "videos": 225,
+ "ffpp_clean_acc": 0.9846,
+ "ffpp_blur_acc": 0.8,
+ "ffpp_blur_acc_original": 0.6615,
+ "dfdc_clean_acc": 0.725,
+ "sure_acc": 0.9366,
+ "sure_acc_ffpp": 0.9829,
+ "unsure_acc": 0.6532,
+ "sure_share": 0.3037
+}

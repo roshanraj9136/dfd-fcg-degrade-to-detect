@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://dfd-fcg-degrade-to-detect.vercel.app/sitemap.xml

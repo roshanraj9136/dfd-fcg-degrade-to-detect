@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#eef2ff"/><stop offset="1" stop-color="#e0e7ff"/></linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <g transform="translate(80 70)">
+    <rect width="72" height="72" rx="18" fill="#4f46e5"/>
+    <circle cx="36" cy="31" r="13" fill="none" stroke="#fff" stroke-width="4.5"/>
+    <path d="M20 56c3.5-8 9-11 16-11s12.5 3 16 11" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/>
+    <circle cx="54" cy="18" r="8" fill="#22c55e" stroke="#fff" stroke-width="3"/>
+    <text x="96" y="48" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="34" font-weight="700" fill="#0f172a">Deepfake Video Checker</text>
+  </g>
+  <text x="80" y="270" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="68" font-weight="800" fill="#0f172a">Is this video</text>
+  <text x="80" y="352" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="68" font-weight="800"><tspan fill="#16a34a">real</tspan><tspan fill="#0f172a"> or a </tspan><tspan fill="#dc2626">deepfake</tspan><tspan fill="#0f172a">?</tspan></text>
+  <text x="80" y="430" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="30" fill="#475569">Upload a short face video. Get the answer and a simple reason,</text>
+  <text x="80" y="472" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="30" fill="#475569">and an honest “not sure” when it can't tell. Free.</text>
+  <g transform="translate(80 520)">
+    <rect width="132" height="52" rx="26" fill="#f0fdf4" stroke="#86efac" stroke-width="2"/>
+    <text x="66" y="35" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24" font-weight="800" fill="#16a34a">REAL</text>
+    <rect x="148" width="132" height="52" rx="26" fill="#fef2f2" stroke="#fca5a5" stroke-width="2"/>
+    <text x="214" y="35" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24" font-weight="800" fill="#dc2626">FAKE</text>
+    <rect x="296" width="190" height="52" rx="26" fill="#fef3c7" stroke="#fcd34d" stroke-width="2"/>
+    <text x="391" y="35" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24" font-weight="800" fill="#b45309">NOT SURE</text>
+  </g>
+  <g transform="translate(800 150)">
+    <rect width="300" height="230" rx="24" fill="#ffffff" stroke="#c7d2fe" stroke-width="3"/>
+    <rect width="300" height="36" rx="18" fill="#c7d2fe"/>
+    <circle cx="26" cy="18" r="6" fill="#fff"/><circle cx="46" cy="18" r="6" fill="#fff"/><circle cx="66" cy="18" r="6" fill="#fff"/>
+    <ellipse cx="150" cy="140" rx="56" ry="66" fill="#fde7d6" stroke="#f3c9ab" stroke-width="3"/>
+    <path d="M96 118c6-42 102-42 108 0" fill="#7c5a43" opacity=".85"/>
+    <ellipse cx="128" cy="138" rx="8" ry="6" fill="#334155"/><ellipse cx="172" cy="138" rx="8" ry="6" fill="#334155"/>
+    <path d="M131 176c11 9 27 9 38 0" fill="none" stroke="#e11d48" stroke-width="5" stroke-linecap="round"/>
+    <rect x="88" y="66" width="124" height="148" fill="none" stroke="#4f46e5" stroke-width="4" rx="10" stroke-dasharray="12 7"/>
+  </g>
+  <circle cx="1060" cy="420" r="62" fill="#fff" stroke="#4f46e5" stroke-width="11"/>
+  <line x1="1104" y1="466" x2="1150" y2="516" stroke="#4f46e5" stroke-width="18" stroke-linecap="round"/>
+  <path d="M1033 422l19 19 35-40" fill="none" stroke="#16a34a" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

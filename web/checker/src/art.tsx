@@ -223,3 +223,41 @@ export function SureIcon({ sure, className = "h-5 w-5" }: { sure: boolean; class
     <svg viewBox="0 0 24 24" className={className} {...stroke}><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6v.6" /><circle cx="12" cy="17" r=".6" fill="currentColor" /></svg>
   );
 }
+
+/** Small pictures for the three ways to check: the video as it is, with strong blur, with heavy compression. */
+export function OptionIcon({ kind, className = "h-11 w-11" }: { kind: string; className?: string }) {
+  const face = (
+    <g>
+      <circle cx="24" cy="21" r="8" fill="#fde7d6" stroke="#e0a982" strokeWidth="1.5" />
+      <circle cx="21" cy="20" r="1.2" fill="#334155" /><circle cx="27" cy="20" r="1.2" fill="#334155" />
+      <path d="M21 24.5c1.8 1.4 4.2 1.4 6 0" fill="none" stroke="#e11d48" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M12 38c2-6 6.5-8.5 12-8.5s10 2.5 12 8.5" fill="#c7d2fe" />
+    </g>
+  );
+  const bg = kind === "blur" ? "#e0f2fe" : kind === "compress" ? "#fef3c7" : "#dcfce7";
+  return (
+    <svg viewBox="0 0 48 48" className={className} aria-hidden>
+      <defs>
+        <filter id="opt-blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.8" /></filter>
+        <clipPath id="opt-clip"><rect x="6" y="6" width="36" height="36" rx="8" /></clipPath>
+      </defs>
+      <rect x="2" y="2" width="44" height="44" rx="12" fill={bg} />
+      <rect x="6" y="6" width="36" height="36" rx="8" fill="#ffffff" />
+      {kind === "blur" && <g filter="url(#opt-blur)" clipPath="url(#opt-clip)">{face}</g>}
+      {kind === "compress" && (
+        <g clipPath="url(#opt-clip)">
+          {face}
+          {/* big square blocks, like a video squeezed into a tiny file */}
+          {[[12, 12, "#fde7d6"], [24, 12, "#fde7d6"], [12, 24, "#c7d2fe"], [24, 24, "#fde7d6"], [12, 30, "#c7d2fe"], [30, 30, "#c7d2fe"]].map(([x, y, c], i) => (
+            <rect key={i} x={x as number} y={y as number} width="12" height="12" fill={c as string} opacity=".55" />
+          ))}
+          <g stroke="#ffffff" strokeWidth="1.2" opacity=".9">
+            {[12, 18, 24, 30, 36].map((v) => <line key={`v${v}`} x1={v} x2={v} y1="6" y2="42" />)}
+            {[12, 18, 24, 30, 36].map((v) => <line key={`h${v}`} y1={v} y2={v} x1="6" x2="42" />)}
+          </g>
+        </g>
+      )}
+      {kind !== "blur" && kind !== "compress" && face}
+    </svg>
+  );
+}
