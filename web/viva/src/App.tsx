@@ -1,6 +1,7 @@
 import { Fragment, useState } from "react";
 import type { ReactNode } from "react";
 import fails from "./fails.json";
+import retrain from "./retrain.json";
 import scores from "./scores.json";
 import upgrade from "./upgrade.json";
 import websiteCheck from "./website_check.json";
@@ -16,7 +17,7 @@ const LINKS = {
 
 const NAV: [string, string][] = [
   ["summary", "In short"], ["model", "Model"], ["problem", "Problem"], ["cause", "Cause"], ["fix", "My fix"],
-  ["results", "Results"], ["limits", "Where it fails"], ["live", "Live checker"], ["novelty", "Novelty"],
+  ["results", "Results"], ["limits", "Where it fails"], ["retrain", "Retraining"], ["live", "Live checker"], ["novelty", "Novelty"],
   ["questions", "Questions"], ["script", "Script"],
 ];
 
@@ -56,6 +57,7 @@ export default function App() {
         <Fix />
         <Results />
         <Limits />
+        <Retrain />
         <Live />
         <Novelty />
         <Questions />
@@ -396,6 +398,101 @@ function Limits() {
       </Card>
       <Say>On videos unlike its training data, DFD-FCG's ranking drops to a coin flip. My system detects when it is outside what it knows
         and says “not sure”, instead of giving a confident wrong answer.</Say>
+    </Section>
+  );
+}
+
+/* ------------------------------------------------------------------ extra effort: fine-tuning on newer data */
+type RS = { n: number; acc: number; false_alarm: number | null; caught: number | null; bacc?: number; auroc?: number };
+type RE = { old: RS; new: RS; ci95?: number[] };
+const RT = retrain as unknown as {
+  pending?: boolean;
+  reported: Record<"ffpp" | "fsh" | "dfdc", Record<Cond | "all", RE>>;
+  new: Record<string, RE & { name: string }>;
+  training: { videos: number; val_videos: number; by: Record<string, number>; best_step: number;
+    val: { step: number; score: number; clean: number; degraded: number }[] };
+  decision: { gain_new_sets: number; change_ffpp: number; change_dfdc: number; deploy: boolean };
+};
+const DATASETS: [string, string, string][] = [
+  ["FaceForensics++ (train split)", "2019", "the paper's own data, kept so the model does not forget it"],
+  ["Celeb-DF v2", "2020", "better-quality face swaps of celebrities"],
+  ["MAVOS-DD", "2025", "YouTube videos in 8 languages: modern face swaps (inswapper) and talking-head animation"],
+  ["SynthForensics", "2026", "people made entirely by 8 AI video generators (Wan, CogVideoX, LTX …)"],
+  ["Counterfactual DeepFake Bench", "2026", "AI-generated talking heads (Hunyuan, LTX, Wan)"],
+  ["Social-media deepfakes", "2026", "real and fake clips as posted on social media"],
+];
+const pts1 = (a?: number | null, b?: number | null) => (a == null || b == null ? "–" : `${b - a >= 0 ? "+" : "−"}${Math.abs((b - a) * 100).toFixed(1)}`);
+
+function Retrain() {
+  if (RT.pending) {
+    return (
+      <Section id="retrain" n="Extra effort" tone="brand" title="Retraining on newer datasets (in progress)">
+        <p className="text-slate-600">Results will appear here when the test runs are finished.</p>
+      </Section>
+    );
+  }
+  const r = RT.reported, d = RT.decision, tr = RT.training;
+  const newRows = Object.entries(RT.new);
+  const verdict = d.deploy;
+  const cmp = (e: RE, k: "bacc" | "auroc" | "caught") => {
+    const a = e.old[k] ?? null, b = e.new[k] ?? null;
+    const f = (v: number | null) => (v == null ? "–" : k === "auroc" ? v.toFixed(3) : pc(v));
+    const good = a != null && b != null && b > a + 1e-9, bad = a != null && b != null && b < a - 1e-9;
+    return <span>{f(a)} → <b className={good ? "text-real" : bad ? "text-fake" : "text-slate-900"}>{f(b)}</b></span>;
+  };
+  const ci = (e: RE) => (e.ci95 ? `${(e.ci95[0] * 100).toFixed(1)} to ${e.ci95[1] >= 0 ? "+" : ""}${(e.ci95[1] * 100).toFixed(1)}` : "–");
+  return (
+    <Section id="retrain" n="Extra effort" tone="brand" title="Retraining DFD-FCG on newer datasets (2025–2026)"
+      lead={<>“Where it fails” showed the model only knows 2018–19 fakes. So I fine-tuned it on {tr.videos.toLocaleString()} videos from six
+        open datasets, including three from 2025–2026, and tested it on videos it never saw. Same architecture, same loss as the authors.</>}>
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+        <Table head={["Training data", "Year", "What it adds"]} rows={DATASETS.map(([a, b, c]) => [a, b, <span className="text-left text-slate-600">{c}</span>])} />
+        <Card>
+          <div className="font-bold text-slate-900">How it was done fairly</div>
+          <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
+            <li>• <b className="text-slate-900">What is trained:</b> only the authors' side network and heads (0.25 M parameters). CLIP stays frozen, as in
+              the paper. Their loss: focal loss on the 3 heads + face-guided attention loss. Fits my 4 GB GPU (1.6 GB).</li>
+            <li>• <b className="text-slate-900">Robustness kept:</b> each training clip is randomly mirrored, JPEG-compressed, blurred, down-scaled or noised.</li>
+            <li>• <b className="text-slate-900">Checkpoint chosen on check videos only</b> ({tr.val_videos} videos from the same datasets' validation splits).</li>
+            <li>• <b className="text-slate-900">Never seen:</b> the {UP.videos} reported test videos, all of DFDC, and every test split below.
+              The rule for putting it on the website was written down before testing.</li>
+            <li>• <b className="text-slate-900">Read-out refitted</b> with exactly the research recipe on the same 49 fit videos.</li>
+          </ul>
+        </Card>
+      </div>
+
+      <h3 className="mt-8 text-lg font-bold text-slate-900">1. Newer test videos it never saw (as uploaded)</h3>
+      <div className="mt-2">
+        <Table head={["Held-out test set", "Videos", "Balanced accuracy", "AUROC", "Fakes caught"]}
+          rows={newRows.map(([, e]) => [e.name, String(e.new.n), e.old.bacc != null ? cmp(e, "bacc") : "–", e.old.auroc != null ? cmp(e, "auroc") : "–", cmp(e, "caught")])}
+          note={<>Released model → fine-tuned model, each with its own quality correction; live-checker rules (8 clips, every face). Sets made only of
+            fakes show “fakes caught”. 95% bootstrap range of the balanced-accuracy change: {newRows.filter(([, e]) => e.ci95).map(([, e]) => `${e.name.split(",")[0].split(" (")[0]} ${ci(e)} points`).join(" · ")}.</>} />
+      </div>
+
+      <h3 className="mt-8 text-lg font-bold text-slate-900">2. The original {UP.videos} test videos (did it forget?)</h3>
+      <div className="mt-2">
+        <Table head={["Reported test videos", "As it is", "Strong blur", "Heavy compression", "All three: balanced acc."]}
+          rows={([["FF++ (70 real, 60 fake)", "ffpp"], ["FaceShifter (with FF++ real)", "fsh"], ["DFDC (40 real, 40 fake)", "dfdc"]] as const).map(([n, g]) => [
+            n, cmp(r[g].clean, "bacc"), cmp(r[g].GB_5, "bacc"), cmp(r[g].VC_5, "bacc"),
+            <span>{cmp(r[g].all, "bacc")} <span className="text-xs text-slate-500">({ci(r[g].all)})</span></span>])}
+          note="Balanced accuracy at the 0.5 line, released → fine-tuned, research protocol (2 clips, the authors' damage code). In brackets: 95% bootstrap range of the change, in points." />
+      </div>
+
+      <Card className={`mt-6 ${verdict ? "border-green-200 bg-real-soft" : "border-amber-200 bg-amber-50"}`}>
+        <div className={`font-bold ${verdict ? "text-real" : "text-amber-800"}`}>
+          {verdict ? "Decision: the fine-tuned model now runs on the website" : "Decision: the website keeps the released model"}
+        </div>
+        <p className="mt-1 text-sm text-slate-700">
+          Rule fixed before testing: switch only if the newer test sets gain at least 5 points of balanced accuracy and FF++ and DFDC each lose at
+          most 2. Measured: newer sets {pts1(0, d.gain_new_sets)} points, FF++ {pts1(0, d.change_ffpp)}, DFDC {pts1(0, d.change_dfdc)}.
+          {verdict ? " All three hold." : " Not all three hold, so I report the result but do not switch."}
+        </p>
+      </Card>
+      <Say>{verdict
+        ? <>I fine-tuned DFD-FCG's side network on six datasets including 2025–2026 fakes, with the test videos kept out. On newer videos it never saw,
+          balanced accuracy rose by {pts1(0, d.gain_new_sets)} points, while the original test results stayed within 2 points, so the website now uses it.</>
+        : <>I fine-tuned DFD-FCG's side network on six datasets including 2025–2026 fakes, with the test videos kept out. The change on newer videos was
+          {" "}{pts1(0, d.gain_new_sets)} points; it did not meet the rule I fixed in advance, so the website keeps the released model and I report why.</>}</Say>
     </Section>
   );
 }
