@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Health, Progress, Result } from "./api";
-import { SAMPLES, SPACE_URL, check, health, onSpaceStatus } from "./api";
+import { SAMPLES, check, fetchSample, health, onSpaceStatus } from "./api";
 import { FaceRegions, Gauge, HeroArt, Logo, OptionIcon, People, ScoreBar, Spinner, StepIcon, SureIcon, Timeline, UploadIcon } from "./art";
 import ACC from "./accuracy.json";
 
-const GUIDE_URL = "https://dfd-fcg-viva.vercel.app";
-const CODE_URL = "https://github.com/roshanraj9136/dfd-fcg-degrade-to-detect";
+const YEAR = new Date().getFullYear();
 const MIN_SECONDS = 4;
 
 // the three ways to check: one short line each, in plain words
@@ -141,15 +140,15 @@ export default function App() {
     if (f) start(f, f.name);
   };
 
-  const sample = async (url: string, filename: string) => {
+  const sample = async (urls: readonly string[], filename: string) => {
     setStage("uploading");
     setStep("upload");
     setProg(0);
     try {
-      const b = await (await fetch(url)).blob();
+      const b = await fetchSample(urls);
       start(b, filename);
     } catch {
-      setErr("Could not download the sample video.");
+      setErr("Could not download the sample video. Please check your internet connection and try again.");
       setStage("error");
     }
   };
@@ -168,25 +167,28 @@ export default function App() {
       <a href="#check" className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:shadow">
         Skip to the checker
       </a>
-      <header className="border-b border-slate-200 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-4">
-          <a href="/" className="flex items-center gap-3">
-            <Logo />
-            <span className="text-lg font-bold text-slate-900">Deepfake Video Checker</span>
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-5">
+          <a href="/" className="flex min-w-0 items-center gap-2.5">
+            <Logo className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />
+            <span className="truncate text-base font-bold text-slate-900 sm:text-lg">Deepfake Video Checker</span>
           </a>
-          <nav className="hidden items-center gap-1 text-sm text-slate-600 md:flex" aria-label="Sections">
+          <nav className="hidden items-center gap-1 text-sm text-slate-600 lg:flex" aria-label="Sections">
             {[["#how", "How it works"], ["#accuracy", "Accuracy"], ["#faq", "Questions"], ["#privacy", "Privacy"]].map(([href, l]) => (
               <a key={href} href={href} className="rounded-lg px-2.5 py-1.5 hover:bg-slate-100 hover:text-slate-900">{l}</a>
             ))}
           </nav>
-          <ServerBadge h={h} />
+          <div className="flex shrink-0 items-center gap-2">
+            <ServerBadge h={h} />
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-5">
-        <section className="grid items-center gap-8 py-10 md:grid-cols-2">
+      <main className="mx-auto max-w-5xl px-4 sm:px-5">
+        <section className="grid items-center gap-8 py-8 sm:py-10 md:grid-cols-2">
           <div>
-            <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-slate-900 md:text-4xl">
+            <h1 className="text-[1.75rem] font-extrabold leading-tight tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
               Is this video <span className="text-real">real</span> or a <span className="text-fake">deepfake</span>?
             </h1>
             <p className="mt-3 text-base text-slate-600">
@@ -200,17 +202,17 @@ export default function App() {
               <li className="flex gap-2"><Check /> Your video is deleted right after the check</li>
             </ul>
           </div>
-          <HeroArt className="hidden w-full max-w-sm justify-self-center md:block" />
+          <HeroArt className="hero-art hidden w-full max-w-sm justify-self-center md:block" />
         </section>
 
-        <section id="check" ref={uploadRef} className="card scroll-mt-6 p-5 md:p-7">
+        <section id="check" ref={uploadRef} className="card scroll-mt-20 p-4 sm:p-5 md:p-7">
           <StepTitle n={1} title="Choose how to check" />
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
             {CHECK_OPTIONS.map((o) => {
               const on = degrade === o.id;
               return (
                 <button key={o.id} disabled={busy} onClick={() => setDegrade(o.id)} aria-pressed={on}
-                  className={`flex items-start gap-3 rounded-2xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60
+                  className={`flex min-h-[44px] items-start gap-3 rounded-2xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60
                     ${on ? "border-brand bg-brand-soft ring-1 ring-brand" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"}`}>
                   <OptionIcon kind={o.id} className="h-11 w-11 shrink-0" />
                   <span className="min-w-0">
@@ -237,14 +239,14 @@ export default function App() {
             className={`mt-3 flex flex-col items-center rounded-2xl border-2 border-dashed px-5 py-7 text-center transition
               ${drag ? "border-brand bg-brand-soft" : "border-slate-300 bg-slate-50"}`}>
             <UploadIcon className="h-11 w-11 text-brand" />
-            <p className="mt-3 text-base font-semibold text-slate-900">Drop a video here</p>
+            <p className="mt-3 text-base font-semibold text-slate-900"><span className="[@media(pointer:coarse)]:hidden">Drop a video here</span><span className="hidden [@media(pointer:coarse)]:inline">Choose a video from your phone or tablet</span></p>
             <p className="mt-1 text-xs text-slate-500">MP4, MOV, AVI, MKV or WEBM · at least 4 seconds · one or two clear faces · up to {MAX_MB} MB</p>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
               <button className="btn-primary" disabled={busy} onClick={() => input.current?.click()}>
                 Choose a video
               </button>
               {SAMPLES.map((s) => (
-                <button key={s.id} className="btn-ghost" disabled={busy} onClick={() => sample(s.url, s.name)}>
+                <button key={s.id} className="btn-ghost" disabled={busy} onClick={() => sample(s.urls, s.name)}>
                   {s.label}
                 </button>
               ))}
@@ -264,7 +266,7 @@ export default function App() {
         </section>
 
         {(busy || stage === "error") && (
-          <section ref={progressRef} className="card mt-8 scroll-mt-6 p-6 md:p-8">
+          <section ref={progressRef} className="card mt-8 scroll-mt-20 p-4 sm:p-6 md:p-8">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-slate-900">{stage === "error" ? "Something went wrong" : "Checking your video"}</h2>
               {name && <span className="truncate pl-4 text-sm text-slate-500">{name}</span>}
@@ -315,19 +317,23 @@ export default function App() {
       </main>
 
       <footer className="mt-16 border-t border-slate-200 bg-white">
-        <div className="mx-auto grid max-w-5xl gap-6 px-5 py-8 text-sm text-slate-600 md:grid-cols-[1.4fr_1fr]">
+        <div className="mx-auto grid max-w-5xl gap-6 px-5 pt-8 pb-6 text-sm text-slate-600 md:grid-cols-[1.4fr_1fr]">
           <div>
             <div className="flex items-center gap-2 font-semibold text-slate-900"><Logo className="h-6 w-6" /> Deepfake Video Checker</div>
-            <p className="mt-2">A free research tool by Roshan Raj (B.Tech project). It uses the DFD-FCG detector (CVPR 2025) with a
-              quality correction. It gives a strong hint, not proof.</p>
+            <p className="mt-2">Find out in about a minute whether a face video is real or a deepfake. Free to use. The answer is a
+              strong hint, not proof.</p>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <a className="text-brand hover:underline" href="#privacy">Privacy and terms</a>
+          <div className="grid grid-cols-2 gap-2 content-start">
+            <a className="text-brand hover:underline" href="#how">How it works</a>
+            <a className="text-brand hover:underline" href="#accuracy">Accuracy</a>
             <a className="text-brand hover:underline" href="#faq">Questions</a>
-            <a className="text-brand hover:underline" href={GUIDE_URL}>How it was built and tested</a>
-            <a className="text-brand hover:underline" href={CODE_URL}>Source code</a>
-            <a className="text-brand hover:underline" href={`${CODE_URL}/issues`}>Report a problem</a>
-            <a className="text-brand hover:underline" href={SPACE_URL}>Checker on Hugging Face</a>
+            <a className="text-brand hover:underline" href="#privacy">Privacy and terms</a>
+          </div>
+        </div>
+        <div className="border-t border-slate-200">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-5 py-4 text-xs text-slate-600">
+            <span>Made by <b className="font-semibold text-slate-900">Roshan Raj</b></span>
+            <span>© {YEAR} Roshan Raj. All rights reserved.</span>
           </div>
         </div>
       </footer>
@@ -350,6 +356,31 @@ function Check() {
       <circle cx="10" cy="10" r="9" fill="#dcfce7" />
       <path d="M6 10.5l2.5 2.5L14 7.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+function ThemeToggle() {
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+  const flip = () => {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", next ? "#0b1120" : "#4f46e5"));
+    try { localStorage.setItem("theme", next ? "dark" : "light"); } catch { /* storage blocked */ }
+  };
+  return (
+    <button onClick={flip} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} title={dark ? "Light mode" : "Dark mode"}
+      className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100">
+      {dark ? (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+          <circle cx="12" cy="12" r="4.2" /><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
+        </svg>
+      )}
+    </button>
   );
 }
 
@@ -381,12 +412,12 @@ function ResultView({ r, preview, refEl, onAgain }: { r: Result; preview: string
   const tone = !sure ? "ring-amber-200" : fake ? "ring-red-200" : "ring-green-200";
   const bg = !sure ? "bg-amber-50" : fake ? "bg-fake-soft" : "bg-real-soft";
   return (
-    <section ref={refEl} className="mt-8 scroll-mt-6 space-y-6">
+    <section ref={refEl} className="mt-8 scroll-mt-20 space-y-6">
       <div className={`card overflow-hidden ring-2 ${tone}`}>
-        <div className={`grid items-center gap-6 p-6 md:grid-cols-[auto_1fr_auto] md:p-8 ${bg}`}>
-          <Gauge p={r.p} verdict={r.verdict} />
+        <div className={`grid items-center justify-items-center gap-5 p-5 text-center sm:justify-items-start sm:text-left md:grid-cols-[auto_1fr_auto] md:gap-6 md:p-8 ${bg}`}>
+          <Gauge p={r.p} verdict={r.verdict} unsure={!sure} />
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start sm:gap-3">
               <span className="label">Result</span>
               <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold
                 ${sure ? "bg-white text-slate-700" : "bg-amber-100 text-amber-800"}`}>
@@ -399,14 +430,17 @@ function ResultView({ r, preview, refEl, onAgain }: { r: Result; preview: string
                 </span>
               )}
             </div>
-            <h2 className={`mt-1 text-3xl font-extrabold ${!sure ? "text-amber-700" : fake ? "text-fake" : "text-real"}`}>
+            <h2 className={`mt-1 text-2xl font-extrabold sm:text-3xl ${!sure ? "text-amber-700" : fake ? "text-fake" : "text-real"}`}>
               {sure ? (fake ? "This looks like a deepfake" : "This looks like a real video")
-                : (fake ? "Probably a deepfake, but not sure" : "Probably real, but not sure")}
+                : `The checker can't tell. It leans ${fake ? "fake" : "real"}`}
             </h2>
             <p className="mt-2 text-slate-600">
-              {fake ? "The face shows signs of manipulation that the detector has learned from known deepfakes."
-                : "The face and its movement look like an authentic recording."}
-              {!sure && " The score is close to the line. On our test videos such answers were wrong much more often, so treat this as a hint and check the video another way too."}
+              {sure ? (fake ? "The face shows signs of manipulation that the detector has learned from known deepfakes."
+                : "The face and its movement look like an authentic recording.")
+                : <>The score is {Math.round(r.p * 100)}% fake, close to the 50% line. On our test videos, about
+                  {" "}{Math.round((1 - ACC.unsure_acc) * 10)} in 10 answers like this were wrong. <b className="font-semibold text-slate-800">Don't rely on
+                  this answer</b>; check the video another way. New kinds of fakes, phone videos and faces unlike the detector's
+                  training videos often end up here.</>}
             </p>
           </div>
           {preview && <video src={preview} className="hidden h-32 rounded-xl md:block" muted autoPlay loop playsInline />}
@@ -557,7 +591,7 @@ function Accuracy() {
       </div>
       <p className="mt-3 text-xs text-slate-600">
         It is weaker on videos unlike its training data: {pct(a.dfdc_clean_acc)} on DFDC, a different dataset. That is why it says
-        “not sure” instead of guessing. <a className="font-medium text-brand underline underline-offset-2" href={GUIDE_URL + "#v2"}>All results →</a>
+        “not sure” instead of guessing.
       </p>
     </section>
   );
@@ -567,7 +601,7 @@ const FAQ: [string, string][] = [
   ["Is the answer proof?", "No. It is a strong hint from a research detector, not proof. Never use it alone to accuse someone or as legal evidence."],
   ["What does “not sure” mean?", "The score is close to the line between real and fake. In our tests such answers were wrong far more often, so check the video another way too."],
   ["Which videos work best?", "At least 4 seconds, one or two clear faces looking roughly at the camera, good light. Only the first 10 seconds are checked."],
-  ["What can fool it?", "New kinds of fakes it has not seen, very poor quality, faces turned away or covered, and crowds (it checks at most two people)."],
+  ["What can fool it?", "It was trained on face swaps and changed expressions in talking-head videos. It can miss videos made entirely by AI (for example Sora or Veo), lip-sync fakes, newer face-swap apps, faces turned away or covered, and crowds (it checks at most two people)."],
   ["Why does it take about a minute?", "It finds every face and checks 8 short clips of each. If the free GPU is busy or used up, it runs on a slower CPU instead."],
   ["What happens to my video?", "It is sent to the checker, used for this one check and deleted right after. We keep only anonymous numbers, never the video."],
 ];
@@ -611,7 +645,7 @@ function Privacy() {
         <div className="card p-5 text-sm text-slate-600">
           <div className="flex items-center gap-2 font-semibold text-slate-900"><ScaleIcon /> Fair use</div>
           <ul className="mt-2 space-y-1.5">
-            <li>• A free, non-commercial research tool. The detector (DFD-FCG, Han et al., CVPR 2025) and its weights are for research use only.</li>
+            <li>• Free to use, non-commercial. The detector inside it (DFD-FCG, Han et al., CVPR 2025) and its weights are licensed for research use only.</li>
             <li>• The answer is a hint, not proof, and can be wrong. Do not use it alone to accuse anyone or to make legal, job or money decisions.</li>
             <li>• Only upload videos you are allowed to share. Do not upload someone's private video without their consent.</li>
           </ul>

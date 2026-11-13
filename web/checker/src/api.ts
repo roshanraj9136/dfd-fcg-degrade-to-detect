@@ -94,6 +94,29 @@ function friendly(m: unknown): string {
 }
 
 export const SAMPLES = [
-  { id: "real", label: "Sample: real video", url: "https://raw.githubusercontent.com/aiiu-lab/DFD-FCG/main/resources/videos/000.mp4", name: "sample_real_000.mp4" },
-  { id: "fake", label: "Sample: deepfake", url: "https://raw.githubusercontent.com/aiiu-lab/DFD-FCG/main/resources/videos/000_003.mp4", name: "sample_fake_000_003.mp4" },
+  { id: "real", label: "Sample: real video", name: "sample_real_000.mp4",
+    urls: ["https://cdn.jsdelivr.net/gh/aiiu-lab/DFD-FCG@main/resources/videos/000.mp4",
+      "https://raw.githubusercontent.com/aiiu-lab/DFD-FCG/main/resources/videos/000.mp4"] },
+  { id: "fake", label: "Sample: deepfake", name: "sample_fake_000_003.mp4",
+    urls: ["https://cdn.jsdelivr.net/gh/aiiu-lab/DFD-FCG@main/resources/videos/000_003.mp4",
+      "https://raw.githubusercontent.com/aiiu-lab/DFD-FCG/main/resources/videos/000_003.mp4"] },
 ];
+
+/** Download a sample video: each source gets 20 s, then the next one is tried. */
+export async function fetchSample(urls: readonly string[]): Promise<Blob> {
+  let last: unknown;
+  for (const u of urls) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 20000);
+    try {
+      const r = await fetch(u, { signal: ctl.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return await r.blob();
+    } catch (e) {
+      last = e;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+  throw last instanceof Error ? last : new Error("download failed");
+}

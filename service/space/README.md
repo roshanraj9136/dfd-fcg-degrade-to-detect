@@ -14,8 +14,7 @@ short_description: Upload a face video, get REAL or FAKE with a short reason
 
 # Deepfake video checker (self-calibrated DFD-FCG)
 
-Backend of the website https://dfd-fcg-degrade-to-detect.vercel.app
-(code: https://github.com/roshanraj9136/dfd-fcg-degrade-to-detect).
+Backend of the website https://dfd-fcg-degrade-to-detect.vercel.app. Made by Roshan Raj.
 
 * DFD-FCG (Han et al., CVPR 2025), the authors' released checkpoint, on ZeroGPU.
 * Self-calibration (our add-on): a linear read-out of the model's own features estimates how much FAKE

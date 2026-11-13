@@ -86,18 +86,30 @@ export function StepIcon({ step, className = "h-6 w-6" }: { step: string; classN
   }
 }
 
-export function Gauge({ p, verdict }: { p: number; verdict: "REAL" | "FAKE" }) {
+export function Gauge({ p, verdict, unsure = false }: { p: number; verdict: "REAL" | "FAKE"; unsure?: boolean }) {
   const fake = verdict === "FAKE";
   const conf = fake ? p : 1 - p;
   const R = 54, C = 2 * Math.PI * R;
-  const color = fake ? "#dc2626" : "#16a34a";
+  const color = unsure ? "#d97706" : fake ? "#dc2626" : "#16a34a";
+  if (unsure) {
+    // a near-50/50 score must not look like a confident verdict: amber ring at the fake score, "NOT SURE" in the middle
+    return (
+      <svg viewBox="0 0 140 140" className="h-40 w-40" role="img" aria-label={`Not sure, ${Math.round(p * 100)}% fake, leans ${verdict.toLowerCase()}`}>
+        <circle cx="70" cy="70" r={R} fill="none" style={{ stroke: "var(--color-slate-200)" }} strokeWidth="14" />
+        <circle cx="70" cy="70" r={R} fill="none" stroke={color} strokeWidth="14" strokeLinecap="round"
+          strokeDasharray={`${C * p} ${C}`} transform="rotate(-90 70 70)" />
+        <text x="70" y="64" textAnchor="middle" fontSize="15.5" fontWeight="800" fill={color}>NOT SURE</text>
+        <text x="70" y="86" textAnchor="middle" fontSize="12.5" style={{ fill: "var(--color-slate-500)" }}>{Math.round(p * 100)}% fake</text>
+      </svg>
+    );
+  }
   return (
     <svg viewBox="0 0 140 140" className="h-40 w-40" role="img" aria-label={`${verdict}, ${Math.round(conf * 100)}% confidence`}>
-      <circle cx="70" cy="70" r={R} fill="none" stroke="#e2e8f0" strokeWidth="14" />
+      <circle cx="70" cy="70" r={R} fill="none" style={{ stroke: "var(--color-slate-200)" }} strokeWidth="14" />
       <circle cx="70" cy="70" r={R} fill="none" stroke={color} strokeWidth="14" strokeLinecap="round"
         strokeDasharray={`${C * conf} ${C}`} transform="rotate(-90 70 70)" />
       <text x="70" y="66" textAnchor="middle" fontSize="26" fontWeight="800" fill={color}>{verdict}</text>
-      <text x="70" y="90" textAnchor="middle" fontSize="13" fill="#64748b">{Math.round(conf * 100)}% sure</text>
+      <text x="70" y="90" textAnchor="middle" fontSize="13" style={{ fill: "var(--color-slate-500)" }}>{Math.round(conf * 100)}% sure</text>
     </svg>
   );
 }
@@ -114,11 +126,11 @@ export function ScoreBar({ p, label, muted = false }: { p: number; label: string
         </linearGradient>
       </defs>
       <rect x="10" y="20" width="300" height="12" rx="6" fill={`url(#sb-${label.replace(/\W/g, "")})`} opacity={muted ? 0.6 : 1} />
-      <line x1="160" y1="14" x2="160" y2="38" stroke="#94a3b8" strokeDasharray="3 3" />
+      <line x1="160" y1="14" x2="160" y2="38" style={{ stroke: "var(--color-slate-400)" }} strokeDasharray="3 3" />
       <text x="12" y="50" fontSize="10" fill="#16a34a">real</text>
-      <text x="160" y="50" fontSize="10" fill="#94a3b8" textAnchor="middle">0.5</text>
+      <text x="160" y="50" fontSize="10" style={{ fill: "var(--color-slate-500)" }} textAnchor="middle">0.5</text>
       <text x="308" y="50" fontSize="10" fill="#dc2626" textAnchor="end">fake</text>
-      <circle cx={x} cy="26" r="9" fill={fake ? "#dc2626" : "#16a34a"} stroke="#fff" strokeWidth="3" opacity={muted ? 0.65 : 1} />
+      <circle cx={x} cy="26" r="9" fill={fake ? "#dc2626" : "#16a34a"} style={{ stroke: "var(--color-white)" }} strokeWidth="3" opacity={muted ? 0.65 : 1} />
       <text x={x} y="10" fontSize="11" fontWeight="700" textAnchor="middle" fill={fake ? "#dc2626" : "#16a34a"} opacity={muted ? 0.75 : 1}>
         {Math.round(p * 100)}%
       </text>
@@ -135,11 +147,11 @@ export function FaceRegions({ regions }: { regions: Record<string, number> }) {
   };
   return (
     <svg viewBox="0 0 160 190" className="h-44 w-auto" aria-hidden>
-      <ellipse cx="80" cy="98" rx="62" ry="80" fill={c("skin")} stroke="#cbd5e1" strokeWidth="2" />
-      <ellipse cx="55" cy="80" rx="18" ry="10" fill={c("eyes")} stroke="#fff" strokeWidth="2" />
-      <ellipse cx="105" cy="80" rx="18" ry="10" fill={c("eyes")} stroke="#fff" strokeWidth="2" />
-      <path d="M80 85v30l-12 6h24z" fill={c("nose")} stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
-      <ellipse cx="80" cy="145" rx="26" ry="11" fill={c("lips")} stroke="#fff" strokeWidth="2" />
+      <ellipse cx="80" cy="98" rx="62" ry="80" fill={c("skin")} style={{ stroke: "var(--color-slate-300)" }} strokeWidth="2" />
+      <ellipse cx="55" cy="80" rx="18" ry="10" fill={c("eyes")} style={{ stroke: "var(--color-white)" }} strokeWidth="2" />
+      <ellipse cx="105" cy="80" rx="18" ry="10" fill={c("eyes")} style={{ stroke: "var(--color-white)" }} strokeWidth="2" />
+      <path d="M80 85v30l-12 6h24z" fill={c("nose")} style={{ stroke: "var(--color-white)" }} strokeWidth="2" strokeLinejoin="round" />
+      <ellipse cx="80" cy="145" rx="26" ry="11" fill={c("lips")} style={{ stroke: "var(--color-white)" }} strokeWidth="2" />
     </svg>
   );
 }
@@ -167,24 +179,24 @@ export function Timeline({ clips, seconds, shown = 1 }: { clips: Clip[]; seconds
   const ticks = Array.from({ length: Math.floor(tmax) + 1 }, (_, i) => i).filter((t) => tmax <= 12 || t % 2 === 0);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto w-full min-w-[460px] max-w-[700px]" role="img" aria-label="Fake score of each clip along the video">
-      <rect x={L} y={y(1)} width={W - L - R} height={y(0.5) - y(1)} fill="#fef2f2" rx="6" />
-      <rect x={L} y={y(0.5)} width={W - L - R} height={y(0) - y(0.5)} fill="#f0fdf4" rx="6" />
-      <line x1={L} x2={W - R} y1={y(0.5)} y2={y(0.5)} stroke="#94a3b8" strokeDasharray="5 4" />
+      <rect x={L} y={y(1)} width={W - L - R} height={y(0.5) - y(1)} style={{ fill: "var(--color-fake-soft)" }} rx="6" />
+      <rect x={L} y={y(0.5)} width={W - L - R} height={y(0) - y(0.5)} style={{ fill: "var(--color-real-soft)" }} rx="6" />
+      <line x1={L} x2={W - R} y1={y(0.5)} y2={y(0.5)} style={{ stroke: "var(--color-slate-400)" }} strokeDasharray="5 4" />
       <text x={L - 8} y={y(0.85)} fontSize="12" fill="#dc2626" textAnchor="end" fontWeight="600">fake</text>
-      <text x={L - 8} y={y(0.5) + 4} fontSize="11" fill="#94a3b8" textAnchor="end">50%</text>
+      <text x={L - 8} y={y(0.5) + 4} fontSize="11" style={{ fill: "var(--color-slate-500)" }} textAnchor="end">50%</text>
       <text x={L - 8} y={y(0.15)} fontSize="12" fill="#16a34a" textAnchor="end" fontWeight="600">real</text>
       {ticks.map((t) => (
         <g key={t}>
-          <line x1={x(t)} x2={x(t)} y1={y(0)} y2={y(0) + 5} stroke="#cbd5e1" />
-          <text x={x(t)} y={H - 10} fontSize="11" fill="#64748b" textAnchor="middle">{t} s</text>
+          <line x1={x(t)} x2={x(t)} y1={y(0)} y2={y(0) + 5} style={{ stroke: "var(--color-slate-300)" }} />
+          <text x={x(t)} y={H - 10} fontSize="11" style={{ fill: "var(--color-slate-500)" }} textAnchor="middle">{t} s</text>
         </g>
       ))}
       {Array.from({ length: nf }, (_, f) => f).filter((f) => f !== shown - 1).map((f) => (
-        <path key={f} d={line(clips.map((c) => c.faces[f]))} fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeDasharray="6 5" />
+        <path key={f} d={line(clips.map((c) => c.faces[f]))} fill="none" style={{ stroke: "var(--color-slate-400)" }} strokeWidth="2.5" strokeDasharray="6 5" />
       ))}
       <path d={line(clips.map((c) => c.p))} fill="none" stroke="#4f46e5" strokeWidth="3" strokeLinejoin="round" />
       {clips.map((c, i) => (
-        <circle key={i} cx={x(mid(c))} cy={y(c.p)} r="7" fill={c.p >= 0.5 ? "#dc2626" : "#16a34a"} stroke="#fff" strokeWidth="2.5">
+        <circle key={i} cx={x(mid(c))} cy={y(c.p)} r="7" fill={c.p >= 0.5 ? "#dc2626" : "#16a34a"} style={{ stroke: "var(--color-white)" }} strokeWidth="2.5">
           <title>{`${c.start.toFixed(1)}–${c.end.toFixed(1)} s: ${Math.round(c.p * 100)}% fake`}</title>
         </circle>
       ))}
@@ -203,10 +215,10 @@ export function People({ ps, shown }: { ps: number[]; shown: number }) {
         const cx = w * i + w / 2;
         return (
           <g key={i} opacity={on ? 1 : 0.55}>
-            <circle cx={cx} cy="50" r="40" fill={on ? "#eef2ff" : "#f8fafc"} stroke={on ? "#4f46e5" : "#cbd5e1"} strokeWidth={on ? 4 : 2} />
+            <circle cx={cx} cy="50" r="40" style={{ fill: on ? "var(--color-brand-soft)" : "var(--color-slate-50)", stroke: on ? "var(--color-brand)" : "var(--color-slate-300)" }} strokeWidth={on ? 4 : 2} />
             <circle cx={cx} cy="40" r="14" fill="#fde7d6" stroke="#e0a982" strokeWidth="2" />
             <path d={`M${cx - 24} 78c4-14 13-20 24-20s20 6 24 20`} fill="#fde7d6" stroke="#e0a982" strokeWidth="2" />
-            <text x={cx} y="114" textAnchor="middle" fontSize="13" fill="#334155" fontWeight="600">Person {i + 1}</text>
+            <text x={cx} y="114" textAnchor="middle" fontSize="13" style={{ fill: "var(--color-slate-700)" }} fontWeight="600">Person {i + 1}</text>
             <text x={cx} y="134" textAnchor="middle" fontSize="13" fill={col} fontWeight="700">{Math.round(p * 100)}% fake</text>
           </g>
         );

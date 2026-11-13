@@ -199,9 +199,8 @@ def ui_check(video, degrade, progress=gr.Progress()):
 
 
 with gr.Blocks(title="Deepfake Video Checker", delete_cache=(1800, 3600)) as demo:
-    gr.Markdown("# Deepfake Video Checker\nSelf-calibrated DFD-FCG. Website: "
-                "[dfd-fcg-degrade-to-detect.vercel.app](https://dfd-fcg-degrade-to-detect.vercel.app) · "
-                "[code](https://github.com/roshanraj9136/dfd-fcg-degrade-to-detect)")
+    gr.Markdown("# Deepfake Video Checker\nMade by Roshan Raj. Website: "
+                "[dfd-fcg-degrade-to-detect.vercel.app](https://dfd-fcg-degrade-to-detect.vercel.app)")
     with gr.Row():
         with gr.Column():
             v = gr.Video(label="Face video (at least 4 s)", sources=["upload"])
