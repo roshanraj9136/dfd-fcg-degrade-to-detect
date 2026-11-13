@@ -1,0 +1,160 @@
+{
+ "rows": [
+  {
+   "kind": "REAL",
+   "name": "FF++ real",
+   "n": 70,
+   "label": 0,
+   "clean": {
+    "right": 0.9714,
+    "margin": 0.171
+   },
+   "GB_5": {
+    "right": 0.9,
+    "margin": 0.103
+   },
+   "VC_5": {
+    "right": 0.7857,
+    "margin": 0.101
+   }
+  },
+  {
+   "kind": "DF",
+   "name": "Deepfakes (face swap)",
+   "n": 15,
+   "label": 1,
+   "clean": {
+    "right": 1.0,
+    "margin": 0.392
+   },
+   "GB_5": {
+    "right": 0.6667,
+    "margin": 0.124
+   },
+   "VC_5": {
+    "right": 1.0,
+    "margin": 0.219
+   }
+  },
+  {
+   "kind": "F2F",
+   "name": "Face2Face (expression)",
+   "n": 15,
+   "label": 1,
+   "clean": {
+    "right": 1.0,
+    "margin": 0.256
+   },
+   "GB_5": {
+    "right": 0.6667,
+    "margin": 0.071
+   },
+   "VC_5": {
+    "right": 0.8667,
+    "margin": 0.092
+   }
+  },
+  {
+   "kind": "FS",
+   "name": "FaceSwap",
+   "n": 15,
+   "label": 1,
+   "clean": {
+    "right": 1.0,
+    "margin": 0.254
+   },
+   "GB_5": {
+    "right": 0.9333,
+    "margin": 0.075
+   },
+   "VC_5": {
+    "right": 0.9333,
+    "margin": 0.148
+   }
+  },
+  {
+   "kind": "NT",
+   "name": "NeuralTextures (expression)",
+   "n": 15,
+   "label": 1,
+   "clean": {
+    "right": 1.0,
+    "margin": 0.214
+   },
+   "GB_5": {
+    "right": 0.4667,
+    "margin": 0.065
+   },
+   "VC_5": {
+    "right": 0.4,
+    "margin": 0.133
+   }
+  },
+  {
+   "kind": "FSh",
+   "name": "FaceShifter (never seen)",
+   "n": 15,
+   "label": 1,
+   "clean": {
+    "right": 0.5333,
+    "margin": 0.069
+   },
+   "GB_5": {
+    "right": 0.6,
+    "margin": 0.05
+   },
+   "VC_5": {
+    "right": 0.6,
+    "margin": 0.09
+   }
+  },
+  {
+   "kind": "DFDC_R",
+   "name": "DFDC real",
+   "n": 40,
+   "label": 0,
+   "clean": {
+    "right": 0.9,
+    "margin": 0.124
+   },
+   "GB_5": {
+    "right": 0.7,
+    "margin": 0.072
+   },
+   "VC_5": {
+    "right": 0.425,
+    "margin": 0.063
+   }
+  },
+  {
+   "kind": "DFDC_F",
+   "name": "DFDC fake",
+   "n": 40,
+   "label": 1,
+   "clean": {
+    "right": 0.55,
+    "margin": 0.071
+   },
+   "GB_5": {
+    "right": 0.3,
+    "margin": 0.071
+   },
+   "VC_5": {
+    "right": 0.575,
+    "margin": 0.077
+   }
+  }
+ ],
+ "auroc": {
+  "ffpp": {
+   "clean": 0.984,
+   "GB_5": 0.88,
+   "VC_5": 0.835
+  },
+  "dfdc": {
+   "clean": 0.814,
+   "GB_5": 0.517,
+   "VC_5": 0.51
+  }
+ }
+}

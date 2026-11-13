@@ -238,8 +238,8 @@ export function SystemFig() {
       <Box x={230} y={320} w={250} h={120} />
       <T x={248} y={348} size={12} w={700} color={C.muted}>VERCEL</T>
       <T x={248} y={372} size={16} w={800} color={C.ink}>Viva website (this page)</T>
-      <T x={248} y={393} size={12.5}>plain explanation, figures,</T>
-      <T x={248} y={412} size={12.5}>live numbers from the database</T>
+      <T x={248} y={393} size={12.5}>plain explanation, figures</T>
+      <T x={248} y={412} size={12.5}>and likely questions</T>
       <Arrow d="M166 225 C 195 225, 195 120, 226 120" />
       <Arrow d="M166 255 C 195 255, 195 380, 226 380" />
 
