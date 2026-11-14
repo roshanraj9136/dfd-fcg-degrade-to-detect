@@ -154,7 +154,7 @@ class Analyzer:
         fj = Path(FUSION_JSON) if os.path.isabs(FUSION_JSON) else Path(__file__).resolve().parent / FUSION_JSON
         self.fusion = load_fusion(fj)
         shared = {}
-        self.extra = {n: make_member(self.fusion["detectors"][n], device, shared)
+        self.extra = {n: make_member(self.fusion["detectors"][n], device, shared, here=fj.parent)
                       for n in (self.fusion or {}).get("members", []) if n != "dfd"}
 
     def cpu_twin(self):

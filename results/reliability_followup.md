@@ -51,23 +51,18 @@ python -m unittest discover -s tests -p "test_*.py" -v
 python -m compileall -q service/app service/ens service/space tests
 ```
 
-Local result: 28 passed, one sklearn comparison skipped because sklearn is absent
-from the accessible runtime. CI installs sklearn to run that comparison too.
+Local result: 33 passed in the existing Python 3.12 environment, including the
+sklearn comparison. CI installs sklearn to run that comparison too.
 Tests cover the actual scoring methods isolated from GPU imports, numerical
 failures, tracking gates, split checks, CLIP routing and weighted logistic fitting.
 They do not replace full-video accuracy or GPU/CPU parity checks.
 
 Read `AGENTS.md` and `HANDOFF.md` before continuing. The Kiro session location,
 data root and completed CLIP checkpoint were located. The CLIP log confirms 4,000
-steps completed and a best validation AUROC of 0.8508. Scoring that complementary
-model is the next GPU task.
+steps completed and a best validation AUROC of 0.8508. Local Python/GPU access was
+restored after the initial session restriction. CLIP scoring is now running.
 
-This execution session receives **Access denied** for
-`C:\Users\hp\AppData\Local\Programs\Python\Python312\python.exe`.
-The DFD venv depends on that installation. The accessible bundled Python can run
-NumPy evaluation, but has no Torch/CUDA stack. No GPU inference or training was run.
-
-Prepared runner, for a Windows session with access to the existing GPU environment:
+Runner using the existing GPU environment:
 
 ```powershell
 powershell -NoProfile -File C:\Users\hp\dfd-fcg-degrade-to-detect\scripts\score_clip_candidate.ps1
@@ -78,12 +73,18 @@ not select or deploy a model. Run one GPU job at a time. Use
 `DFD_ENS_DIR` to read these candidate scores alongside the original cached scores.
 Freeze a validation-selected candidate before viewing its new test metrics.
 
-Before merging/deploying, run `tests/check_gend_live.py`,
-`tests/check_fusion_live.py cuda` and both sample videos using the documented
-environments. Count rejected videos in coverage reporting. No model or website
-has been replaced.
+Completed model checks (`scripts/validate_models.ps1`): released CLIP and PE
+implementations matched exactly; seven held-out fusion examples matched the
+offline scores (largest probability difference rounded to four decimals: 0.0000).
+The full real sample returned REAL, p(fake)=0.212, and the fake sample returned
+FAKE, p(fake)=1.000. These checks establish implementation parity, not a new
+accuracy estimate. A selected replacement needs its own parity checks. No model
+or website has been replaced.
 
 A split-rule ambiguity was sent to the owner: AGENTS reserves Counterfactual
 groups 25–36 from tuning, while previous code uses 25–30 for validation. The above
-experiment reconstructs that previous validation protocol; no further tuning
-should proceed until the intended rule is confirmed.
+experiment reconstructs that previous validation protocol. The new CLIP selection
+excludes all synth validation rows conservatively. The earlier checkpoint's use
+of those validation rows is not undone by excluding them now. The complete rule,
+frozen before new test metrics, is in `ensemble/PLAN.md`; selection and test
+evaluation run as separate commands in `service/ens/select_clip_fusion.py`.

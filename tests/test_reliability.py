@@ -160,7 +160,7 @@ class LiveIntegrationTests(unittest.TestCase):
     def test_shared_network_preserves_each_sampling_count(self):
         ns = source_objects("service/app/gend_live.py", names=("make_member",))
         class DummyMember:
-            def __init__(self, cfg, device):
+            def __init__(self, cfg, device, here=None):
                 self.cfg, self.frames, self.sc = cfg, cfg["frames"], None
                 self.model = object()
         ns["GenDMember"] = DummyMember

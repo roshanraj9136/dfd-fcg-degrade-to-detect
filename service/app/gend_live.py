@@ -209,13 +209,13 @@ class DfdMember:
         return logit(mean_probability(D - G))
 
 
-def make_member(cfg, device, shared=None):
+def make_member(cfg, device, shared=None, here=Path(__file__).resolve().parent):
     """shared: dict reused across members, so GenD members with the same network (backbone + fine-tuned tensors) share
     one model and one forward pass (e.g. a member with and one without self-calibration)."""
     if cfg.get("type") == "dfd":
-        return DfdMember(cfg, device)
+        return DfdMember(cfg, device, here=here)
     shared = {} if shared is None else shared
-    key = (cfg.get("backbone", "clip"), cfg.get("ln"))
+    key = (cfg.get("backbone", "clip"), str((here / cfg["ln"]).resolve()) if cfg.get("ln") else None)
     if key in shared:
         import copy
         m = copy.copy(shared[key])
@@ -227,7 +227,7 @@ def make_member(cfg, device, shared=None):
         m.sc = None if sc is None else dict(zip(("mean", "scale", "coef", "intercept"),
                                                validate_readout(sc, outputs=1, features=1024)))
         return m
-    m = GenDMember(cfg, device)
+    m = GenDMember(cfg, device, here=here)
     shared[key] = m
     return m
 
