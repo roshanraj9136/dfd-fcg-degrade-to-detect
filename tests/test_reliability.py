@@ -175,12 +175,12 @@ class TrainingTests(unittest.TestCase):
     def test_checkpoint_selection_matches_app_threshold(self):
         a = {c: dict(auc=0.99, bacc=0.60) for c in ("clean", "degraded")}
         b = {c: dict(auc=0.95, bacc=0.85) for c in ("clean", "degraded")}
-        self.assertGreater(validation_score(b), validation_score(a))
-        self.assertGreater(validation_score(a, "auc"), validation_score(b, "auc"))
+        self.assertGreater(validation_score(b, "bacc"), validation_score(a, "bacc"))
+        self.assertGreater(validation_score(a), validation_score(b))
 
     def test_bad_validation_metrics_rejected(self):
         for value in (float("nan"), float("inf"), -0.1, 1.1):
-            r = {c: dict(bacc=value) for c in ("clean", "degraded")}
+            r = {c: dict(auc=value) for c in ("clean", "degraded")}
             with self.assertRaises(ValueError):
                 validation_score(r)
 
