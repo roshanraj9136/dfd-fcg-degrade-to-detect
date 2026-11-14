@@ -18,7 +18,7 @@ $env:SCORE_SPLITS = 'val,test,test_open'
 $env:PYTHONIOENCODING = 'utf-8'
 Push-Location $repoRoot
 try {
-    & $Python -c 'import torch; assert torch.cuda.is_available(), "CUDA is required"'
+    & $Python -c 'import torch, av; assert torch.cuda.is_available(), "CUDA is required"'
     if ($LASTEXITCODE -ne 0) { throw 'GPU environment check failed' }
     foreach ($split in @('fit', 'new', 'rep')) {
         $target = Join-Path $Output "gend_clipft_$split.npz"

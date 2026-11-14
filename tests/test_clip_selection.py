@@ -42,6 +42,20 @@ class ClipSelectionTests(unittest.TestCase):
         model = selection.FrozenFusion(dict(coef=[2, -1], intercept=0.5))
         np.testing.assert_allclose(model.decision_function([[1, 3], [2, 1]]), [-0.5, 3.5])
 
+    def test_missing_test_face_cannot_change_the_benchmark(self):
+        new = {m: {("video", "clean", 0): 0.1} for m in selection.MEMBERS}
+        rep = {m: {("old_video", "clean", 0): 0.1} for m in selection.MEMBERS}
+        with patch.object(selection.Dt, "rows", return_value={"video": dict(set="test")}), \
+                patch.object(selection.Dt, "dfd_rep", return_value=({}, {"old_video": (0, "REAL")})):
+            # Additional candidate-only evidence must not change the face set.
+            new["clip_ft"][("video", "clean", 1)] = 20
+            matched, _, coverage = selection.matched_test_scores(new, rep)
+            self.assertEqual(len(matched["clip_ft"]), 1)
+            self.assertEqual(coverage["new"]["videos"], 1)
+            del new["clip_ft"][("video", "clean", 0)]
+            with self.assertRaisesRegex(ValueError, "misses 1 baseline"):
+                selection.matched_test_scores(new, rep)
+
     def test_release_rejects_old_dataset_regression(self):
         base = dict(mean_new_bacc=0.85, ffpp=dict(bacc=0.79), dfdc=dict(bacc=0.60),
                     fsh=dict(bacc=0.64), synth=dict(caught=1.0), sf=dict(caught=0.76))

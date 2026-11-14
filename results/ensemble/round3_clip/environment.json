@@ -1,0 +1,21 @@
+{
+  "recorded_at": "2026-11-14T10:59:44.529074+00:00",
+  "python": "3.12.10",
+  "system": "Windows-11-10.0.26300-SP0",
+  "code_commit": "b17fa8ffc35d70f4d0305b084ec9a42c0b59e401",
+  "packages": {
+    "torch": "2.6.0+cu124",
+    "transformers": "5.20.2",
+    "timm": "1.0.29",
+    "numpy": "2.5.2",
+    "scikit-learn": "1.9.0",
+    "av": "19.0.1"
+  },
+  "hardware": "NVIDIA GeForce RTX 3050 Laptop GPU, 4 GB; one GPU job at a time",
+  "score_frames": 24,
+  "checkpoint": "existing ft_clip/best.pt; prior AUROC selection",
+  "validation_exclusions": [
+    "dfdc",
+    "synth"
+  ]
+}

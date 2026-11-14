@@ -167,6 +167,34 @@ def release_rule(candidate, baseline):
     return dict(checks=checks, metrics_pass=all(checks.values()), deployment_requires_parity=True)
 
 
+def matched_test_scores(new, rep):
+    """Keep every option on the exact live baseline's videos and faces.
+
+    Reject missing candidate evidence before computing any test metric. Extra
+    candidate-only faces cannot change the cohort or most-suspicious-face rule.
+    """
+    meta = Dt.rows()
+    repmeta = Dt.dfd_rep()[1]
+    filtered, coverage = [], {}
+    for name, source in (("new", new), ("reported", rep)):
+        if name == "new":
+            allowed = lambda k: meta.get(k[0], {}).get("set") in ("test", "test_open") and k[1] == "clean"
+        else:
+            allowed = lambda k: k[0] in repmeta and k[1] in Ev.REP_CONDS
+        required = set.intersection(*(set(source[m]) for m in BASELINE))
+        required = {k for k in required if allowed(k)}
+        if not required:
+            raise ValueError(f"empty {name} test cohort")
+        for member in MEMBERS:
+            missing = required - source[member].keys()
+            if missing:
+                raise ValueError(f"{member} misses {len(missing)} baseline {name} test face rows")
+        filtered.append({m: {k: source[m][k] for k in required} for m in MEMBERS})
+        coverage[name] = dict(videos=len({k[0] for k in required}),
+                              video_conditions=len({k[:2] for k in required}), faces=len(required))
+    return *filtered, coverage
+
+
 def test(output):
     if (output / "test.json").exists():
         raise FileExistsError("test results already recorded; do not overwrite a frozen experiment")
@@ -183,12 +211,14 @@ def test(output):
     rep_info, meta = Dt.dfd_rep(), Dt.rows()
     Dt.dfd_rep = lambda: rep_info
     Dt.rows = lambda: meta
+    new, rep, test_coverage = matched_test_scores(new, rep)
     live = json.loads(FUSION.read_text(encoding="utf-8"))
     baseline = Ev.table(new, rep, live["members"], FrozenFusion(live))
     all_results = {key: Ev.table(new, rep, r["members"], FrozenFusion(r))
                    for key, r in selection["options"].items()}
     candidate = all_results[selection["chosen"]]
-    result = dict(chosen=selection["chosen"], exact_live_baseline=baseline, candidate=candidate,
+    result = dict(chosen=selection["chosen"], coverage=test_coverage,
+                  exact_live_baseline=baseline, candidate=candidate,
                   options=all_results, release=release_rule(candidate, baseline))
     (output / "test.json").write_text(json.dumps(result, indent=2, allow_nan=False), encoding="utf-8")
     print("baseline", Ev.fmt(baseline))
