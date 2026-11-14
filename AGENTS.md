@@ -8,6 +8,12 @@ Owner: Roshan Raj (B.Tech project). Goal: a free, non-commercial deepfake video 
 accurate as possible on modern (2025-2026) videos, that always answers **REAL or FAKE** (never "not sure"; the owner
 asked for this explicitly). He wants results he can publish. Commit as `Roshan Raj <roshanraj9136@users.noreply.github.com>`.
 
+## 0. Branches (14 Nov 2026, 11:55 PM)
+
+GitHub has **one branch, main**, and it matches what is live. All earlier branches (codex/reliability-and-validation,
+kiro/simpler-ui) are merged and deleted. For a new change, make one short-lived branch, open one pull request, and
+delete the branch after merging. Do not reuse old branch names.
+
 ---------------------------------------------------------------------------------------------------------------------
 
 ## 1. What is live right now
