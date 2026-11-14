@@ -168,3 +168,30 @@ fix, fine-tuning DFD-FCG's side network alone (round 1), fusion fitted on clean 
 All Kiro background jobs are finished; GPU and CPU are free; keep-awake script stopped. Power plan (AC) was set to
 never sleep and lid-close = do nothing (restore commands in `HANDOFF.md`). Working copy used for every deployment:
 `C:\Users\hp\dfd-work\dfd-fcg-reliability`; a fresh clone also exists at `C:\Users\hp\dfd-fcg-degrade-to-detect`.
+
+## 8. Astra update (14 Nov 2026, 9:17 PM)
+
+PR #1 is merged. Reliability fixes are deployed at HF Space revision
+`fed1102e759487ea0766e7576e643b169ce4332d`: invalid-score guards, main-face tracking
+gate, shared-model sampling fixes, and Windows-to-Linux build normalization.
+41 regression tests, model parity, both local/live samples and the binary-label
+UI check pass. The five-score model weights and published accuracy are unchanged.
+The reweighting and 127-option CLIP experiments failed their release rules; see
+`results/reliability_followup.md` and `results/ensemble/round3_clip/`.
+
+**GPU is occupied now. Do not launch a second GPU job.** Active checkout:
+`C:\Users\hp\dfd-fcg-degrade-to-detect`. A 1,000-step PE continuation is running
+via `scripts/train_paired_candidate.ps1` (launcher PID 13776 at this writing).
+It uses 2,143 training videos, 131 verified FF++ real/fake pairs, and 313 validation
+videos after excluding synth. All 96 missing real counterparts were prepared.
+Step-zero mean validation AUROC is 0.9038 on this restricted cohort; it is not
+directly comparable to the earlier full-cohort number. Protocol: `PAIRED_PLAN.md`.
+
+Logs: `D:\dfd-data\ens\paired_v1\train.out`, `train.err`; model log/checkpoints:
+`D:\dfd-data\ens\ft_pe_paired_v1\`. The queued evaluator (PID 20272) waits for
+successful training, then scores the candidate and freezes validation selection
+before test evaluation. Logs: `paired_v1\evaluate.out`, `evaluate.err`; cached
+scores: `D:\dfd-data\ens\paired_scores_v1`; results: `results/ensemble/paired_v1`.
+It never deploys automatically. Inspect those jobs before starting anything new;
+PIDs are historical identifiers, so verify their command lines if still running.
+After a qualifying result, run candidate parity and samples before release.
