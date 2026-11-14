@@ -17,7 +17,7 @@ import evaluate as Ev  # noqa: E402
 
 OPT = sys.argv[1]
 APP = ROOT / "service" / "app"
-FT = {"pe_ft": Dt.E / "ft_pe" / "best.pt", "clip_ft": Dt.E / "ft_clip" / "best.pt"}
+FT = {"pe_ft": Dt.cache_file("ft_pe/best.pt"), "clip_ft": Dt.cache_file("ft_clip/best.pt")}
 NAMES = {"dfd": "DFD-FCG", "dfdft": "DFD-FCG (retrained)", "pe": "GenD-PE", "pe_ft": "GenD-PE (retrained)",
          "clip": "GenD-CLIP", "clip_ft": "GenD-CLIP (retrained)"}
 

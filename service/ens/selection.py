@@ -1,8 +1,8 @@
-"""Checkpoint selection at the decision threshold, using validation only."""
+"""Validation checkpoint selection; AUROC by default for recalibrated members."""
 import math
 
 
-def validation_score(result, metric="bacc"):
+def validation_score(result, metric="auc"):
     """Equal clean/degraded weight. AUROC remains an explicit reproduction option."""
     if metric not in ("bacc", "auc"):
         raise ValueError("selection metric must be bacc or auc")

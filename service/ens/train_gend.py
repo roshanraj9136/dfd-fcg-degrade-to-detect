@@ -41,7 +41,7 @@ LR = float(sys.argv[3]) if len(sys.argv) > 3 else 1e-4
 NAME = sys.argv[4] if len(sys.argv) > 4 else "clip"
 BS = int(os.environ.get("BS", "32"))
 VAL_EVERY = int(os.environ.get("VAL_EVERY", "500"))
-SELECTION_METRIC = os.environ.get("SELECTION_METRIC", "bacc")
+SELECTION_METRIC = os.environ.get("SELECTION_METRIC", "auc")
 if SELECTION_METRIC not in ("bacc", "auc"):
     raise ValueError("SELECTION_METRIC must be bacc or auc")
 WARMUP = int(os.environ.get("WARMUP", "200"))
@@ -179,7 +179,7 @@ def evaluate(sc, items):
         res[cond] = dict(per_source=per, auc=round(float(np.mean([v["auc"] for v in per.values()])), 4),
                          bacc=round(float(np.mean([v["bacc"] for v in per.values()])), 4))
     res["selection_metric"] = SELECTION_METRIC
-    res["score"] = validation_score(res, SELECTION_METRIC)
+    res["score"] = round(validation_score(res, SELECTION_METRIC), 4)
     sc.model.train()
     return res
 

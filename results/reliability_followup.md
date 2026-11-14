@@ -1,103 +1,89 @@
 # Reliability follow-up (14 November 2026)
 
-This change fixes inference failure modes and prepares a better checkpoint-selection
-criterion. It does **not** contain newly trained weights or a measured increase in
-deepfake-detection accuracy.
+**Status: draft, no deployment and no newly measured accuracy gain.** The result
+remains REAL or FAKE. Invalid inference produces an analysis error.
 
-## What the existing results establish
+## Reliability changes
 
-The checked-in `results/ensemble/results.json` reports the current ensemble at
-85.1% accuracy across 705 clean held-out videos. That pooled number does not describe
-every domain: on DFDC its fake recall is 37.5% on clean input, 15.0% under strong
-blur and 12.5% under heavy compression. Its average DFDC false-alarm rate across
-those conditions is only 0.83%. Missing fakes is therefore a demonstrated limitation,
-not something that can be resolved by claiming higher confidence.
+- Reject empty/non-finite logits, malformed calibration parameters, missing
+  ensemble members and missing face outputs. NaN cannot fall through to REAL.
+- Stabilize sigmoid calculations while preserving ordinary finite scores.
+- Apply the existing face displacement gate to the main track as well as secondary
+  tracks. This prevents distant person switches, but needs video-level validation.
+- Preserve per-member sampling counts when GenD networks or CPU copies are shared.
+- Report a clear API/Space error when scoring fails.
+- Validate train/validation video overlap (and groups when provided), support
+  zero-worker debugging, and retain **AUROC as the default** GenD selection metric.
+  Balanced accuracy is an explicit experimental option; member thresholds are
+  recalibrated by the combiner, as the Kiro briefing explains.
+- Add CLIP/CLIP-fine-tune support to damaged-validation scoring, a runner for the
+  already-completed CLIP checkpoint, and a separate experiment-cache directory
+  so existing scores remain untouched.
 
-The result file records the owner's deliberate choice to deploy the ensemble for
-its gains on newer videos despite a 5.6-point FF++ balanced-accuracy regression.
-This change preserves that ensemble, its weights, calibration and 0.5 threshold.
+## Actual accuracy experiment
 
-## Changes
+The preregistered rule is in `ensemble/ROUND3_PLAN.md`. Reweighting real FF++ videos
+was evaluated on the same **353 validation videos / 1,059 condition rows** as round
+2b. Nine manifest validation videos lack complete cached scores and were excluded
+from every option equally. All 15 options are in `ensemble/round3/selection.json`.
 
-- Reject empty, NaN, infinite and incorrectly shaped scores/calibration parameters.
-  A failed detector or a missing ensemble member can no longer silently return a
-  DFD-only decision, or let a NaN comparison fall through to REAL.
-- Use a stable sigmoid for large logits. Ordinary finite predictions retain the
-  existing mean-probability aggregation and fitted fusion coefficients.
-- Check that inference returns every prepared face. Reject missing explicit
-  fusion-file paths instead of silently using a different detector.
-- Apply the existing secondary-face displacement gate to the main face as well.
-  Reject a main track that is absent around sampled frames. This reduces distant
-  person switches; it is not identity recognition and needs video-level validation.
-- Preserve each shared GenD member's frame count, including in CPU fallback, and
-  key cached inference by both network and sampling count.
-- For **new GenD training runs**, select the checkpoint by validation balanced
-  accuracy at the app's actual 0.5 threshold, equally weighting clean/degraded
-  conditions. Keep AUROC in the log and support `SELECTION_METRIC=auc` to reproduce
-  the previous selection criterion. Check train/validation video overlap and
-  explicit group overlap when group IDs are present.
-- Support `WORKERS=0` for debugging training on Windows.
-- Include the new inference helper in the Hugging Face Space build.
+| Validation result | Original weighting, C=1 | FF++ real weight x3, C=1 |
+|---|---:|---:|
+| Macro balanced accuracy | 80.58% | 79.77% |
+| Macro fake recall | 77.02% | 68.80% |
+| Clean FF++ false alarms | 7.50% | 2.50% |
 
-The existing REAL/FAKE result contract is retained. Invalid inference returns an
-analysis error through the existing API/Space exception handling.
+**No candidate passed the selection rule.** Lower false alarms came with more
+missed fakes. No new candidate was tested or exported. The NumPy baseline reproduces
+the previous CV balanced accuracy exactly; its full-fit probabilities differ from
+the stored live combiner by at most 0.000666 (optimizer tolerance).
 
-## Checks
+The existing published result remains 85.1% correct on 705 clean test videos.
+It is a single-run estimate, not a promise for arbitrary uploads. The original
+switch rule was not met: FF++ balanced accuracy fell 5.6 points. The owner chose
+the modern-video gains deliberately. DFD-FCG remains research-only; the service
+is free and non-commercial.
+
+## Verification and remaining work
 
 ```powershell
-python -m unittest discover -s tests -p "test_reliability.py" -v
-python -m compileall -q service/app service/ens tests/test_reliability.py
+python -m unittest discover -s tests -p "test_*.py" -v
+python -m compileall -q service/app service/ens service/space tests
 ```
 
-The new GitHub Actions workflow runs these CPU checks. They cover numerical
-failures, missing ensemble evidence, score parity on finite synthetic inputs,
-tracking gates, checkpoint selection, split overlap and zero-worker loading.
-The lightweight integration tests compile the real scoring methods from their
-source AST without importing the GPU stack. They do not test model loading,
-full-video preprocessing, GPU/CPU precision parity or classification accuracy.
+Local result: 28 passed, one sklearn comparison skipped because sklearn is absent
+from the accessible runtime. CI installs sklearn to run that comparison too.
+Tests cover the actual scoring methods isolated from GPU imports, numerical
+failures, tracking gates, split checks, CLIP routing and weighted logistic fitting.
+They do not replace full-video accuracy or GPU/CPU parity checks.
 
-Before deployment, run the existing `tests/check_fusion_live.py` against the saved
-crops/checkpoints and compare the complete old/new pipeline on the same videos.
-Report analysis failures/coverage as well as accuracy; rejected videos must not
-silently disappear from the denominator.
+Read `AGENTS.md` and `HANDOFF.md` before continuing. The Kiro session location,
+data root and completed CLIP checkpoint were located. The CLIP log confirms 4,000
+steps completed and a best validation AUROC of 0.8508. Scoring that complementary
+model is the next GPU task.
 
-## Continuing the accuracy work on the training laptop
+This execution session receives **Access denied** for
+`C:\Users\hp\AppData\Local\Programs\Python\Python312\python.exe`.
+The DFD venv depends on that installation. The accessible bundled Python can run
+NumPy evaluation, but has no Torch/CUDA stack. No GPU inference or training was run.
 
-Repository code points to `D:\dfd-data`, including `ens\store\index.csv`,
-`ens\store\frames.npy`, `ens\ft_pe\best.pt` and saved per-video scores.
-These are code defaults, not paths verified on the laptop. The user has identified
-Kiro CLI chats on the Windows laptop as the source of training history. The local
-tool connection was unavailable while this follow-up was prepared; those chats,
-the datasets and checkpoints have not yet been inspected.
+Prepared runner, for a Windows session with access to the existing GPU environment:
 
-1. Read the project-specific Kiro sessions and confirm the current training
-   process, dataset manifests, model artifacts and failed example videos.
-2. Reproduce the current ensemble's per-domain fake recall, false alarms,
-   balanced accuracy and failures on the same saved inputs.
-3. Audit source-video/identity separation. Video-ID checks alone cannot detect
-   leakage between different videos of the same person.
-4. Train into a fresh output directory, selecting only on validation. Example
-   after confirming the existing store and GPU environment:
+```powershell
+powershell -NoProfile -File C:\Users\hp\dfd-fcg-degrade-to-detect\scripts\score_clip_candidate.ps1
+```
 
-   ```powershell
-   $env:STORE = 'D:\dfd-data\ens\store'
-   $env:SELECTION_METRIC = 'bacc'
-   python service/ens/train_gend.py D:\dfd-data\ens\ft_pe_bacc_candidate 4000 0.0001 pe
-   ```
+It writes only candidate scores to `C:\Users\hp\dfd-work\round3-cache`; it does
+not select or deploy a model. Run one GPU job at a time. Use
+`DFD_ENS_DIR` to read these candidate scores alongside the original cached scores.
+Freeze a validation-selected candidate before viewing its new test metrics.
 
-   Do not overwrite `ft_pe/best.pt` or export the candidate directly to the live app.
-   If a custom existing run used other settings, preserve and record those settings.
-5. Score the candidate, refit any dependent self-calibration and fusion on
-   validation data only, and freeze the candidate before testing. Since prior test
-   results have already informed development, use a fresh final holdout for any
-   new generalization claim.
-6. Compare fake recall at matched false-alarm rates by domain and degradation,
-   along with balanced accuracy and confidence calibration. Lowering a threshold
-   alone can catch more fakes while falsely accusing more real videos.
-7. Revisit temporal coverage and face coverage with measured examples: the current
-   app samples the beginning of a video (10 s, capped at 360 frames), follows at
-   most two sufficiently persistent faces and can miss later/brief manipulations.
-   Changing sampling requires matching evaluation and refitting affected read-outs.
+Before merging/deploying, run `tests/check_gend_live.py`,
+`tests/check_fusion_live.py cuda` and both sample videos using the documented
+environments. Count rejected videos in coverage reporting. No model or website
+has been replaced.
 
-No training job, website deployment or live-model replacement is performed by
-this branch.
+A split-rule ambiguity was sent to the owner: AGENTS reserves Counterfactual
+groups 25–36 from tuning, while previous code uses 25–30 for validation. The above
+experiment reconstructs that previous validation protocol; no further tuning
+should proceed until the intended rule is confirmed.
