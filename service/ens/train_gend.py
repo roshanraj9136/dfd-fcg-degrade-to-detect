@@ -179,7 +179,7 @@ def evaluate(sc, items):
         res[cond] = dict(per_source=per, auc=round(float(np.mean([v["auc"] for v in per.values()])), 4),
                          bacc=round(float(np.mean([v["bacc"] for v in per.values()])), 4))
     res["selection_metric"] = SELECTION_METRIC
-    res["score"] = validation_score(res, SELECTION_METRIC)
+    res["score"] = round(validation_score(res, SELECTION_METRIC), 4)
     sc.model.train()
     return res
 

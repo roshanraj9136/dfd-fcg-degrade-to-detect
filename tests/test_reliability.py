@@ -172,6 +172,17 @@ class LiveIntegrationTests(unittest.TestCase):
 
 
 class TrainingTests(unittest.TestCase):
+    def test_damage_scorer_uses_requested_backbone(self):
+        fn = source_objects("service/ens/score_valdmg.py", names=("gend_settings",))["gend_settings"]
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(fn("pe"), ("pe", None))
+            self.assertEqual(fn("clip"), ("clip", None))
+            self.assertEqual(fn("clipft")[0], "clip")
+            self.assertIn("ft_clip", fn("clipft")[1])
+            self.assertEqual(fn("peft")[0], "pe")
+            with self.assertRaises(ValueError):
+                fn("unknown")
+
     def test_checkpoint_selection_matches_app_threshold(self):
         a = {c: dict(auc=0.99, bacc=0.60) for c in ("clean", "degraded")}
         b = {c: dict(auc=0.95, bacc=0.85) for c in ("clean", "degraded")}

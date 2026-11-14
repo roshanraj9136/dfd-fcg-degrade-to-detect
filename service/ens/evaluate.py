@@ -27,7 +27,7 @@ VAL_CONDS = tuple(os.environ.get("VAL_CONDS", "clean").split(","))
 def _valdmg(n):
     """Damaged validation scores of one member: {(vid, cond, 0): video logit} (service/ens/score_valdmg.py)."""
     base = n[:-3] if n.endswith("_sc") else n
-    f = Dt.E / f"valdmg_{base.replace('_ft', 'ft')}.npz"
+    f = Dt.cache_file(f"valdmg_{base.replace('_ft', 'ft')}.npz")
     if not f.exists():
         return {}
     z = np.load(f)
@@ -55,7 +55,7 @@ def _load_members(names):
     for n in names:
         if n in ("dfd", "dfdft"):
             w = "old" if n == "dfd" else "new"
-            if n == "dfdft" and not (Dt.E / "dfd_val_new.jsonl").exists():
+            if n == "dfdft" and not Dt.cache_file("dfd_val_new.jsonl").exists():
                 print("skip dfdft: validation scores missing")
                 continue
             new[n] = {k: float(Dt.logit(v)) for k, v in Dt.dfd_new(w).items()}

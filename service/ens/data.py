@@ -7,13 +7,14 @@ Per video and face (and, for the 225 reported test videos, per condition clean /
 """
 import csv
 import json
+import os
 from pathlib import Path
 
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
-D = Path(r"D:\dfd-data")
-E = D / "ens"
+D = Path(os.environ.get("DFD_DATA_ROOT", r"D:\dfd-data"))
+E = Path(os.environ.get("DFD_ENS_DIR", str(D / "ens")))
 SETS = [D / "new" / "sets.csv", D / "new" / "sets_gated.csv", D / "new" / "sets_more.csv"]
 NAMES = {"celebdf": "Celeb-DF v2", "social": "Social-media deepfakes (2026)",
          "mavos": "MAVOS-DD, methods seen in training (2025)", "mavos_open": "MAVOS-DD, methods never seen (2025)",
@@ -22,6 +23,12 @@ NAMES = {"celebdf": "Celeb-DF v2", "social": "Social-media deepfakes (2026)",
          "dfdc": "DFDC part 0 (reported, never trained on)"}
 sig = lambda x: 1 / (1 + np.exp(-np.asarray(x, float)))  # noqa: E731
 logit = lambda p: np.log(np.clip(p, 1e-6, 1 - 1e-6) / (1 - np.clip(p, 1e-6, 1 - 1e-6)))  # noqa: E731
+
+
+def cache_file(name):
+    """New experiment scores can live separately; existing scores stay read-only."""
+    candidate = E / name
+    return candidate if candidate.exists() else D / "ens" / name
 
 
 def rows():
@@ -40,7 +47,7 @@ def group(r):
 
 def gend(name, which):
     """{(vid, cond, face): per-frame logits} and {(vid, cond, face): per-frame L2 features (fp16)}."""
-    p = E / f"gend_{name}_{which}.npz"
+    p = cache_file(f"gend_{name}_{which}.npz")
     if not p.exists():
         return None, None
     z = np.load(p)
@@ -57,7 +64,7 @@ def dfd_new(which="old"):
     """DFD-FCG self-calibrated P(fake) per (vid, 'clean', face) for the test / val videos of the fine-tuning sets.
     which: 'old' = released checkpoint, 'new' = round-1 fine-tuned checkpoint (each with its own read-out)."""
     out = {}
-    for f in (D / f"eval_new_{which}.jsonl", E / f"dfd_val_{which}.jsonl"):
+    for f in (D / f"eval_new_{which}.jsonl", cache_file(f"dfd_val_{which}.jsonl")):
         if not f.exists():
             continue
         for l in open(f, encoding="utf-8"):

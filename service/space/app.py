@@ -48,7 +48,7 @@ from models import ensure_models  # noqa: E402
 
 t0 = time.time()
 ensure_models()
-from pipeline import FLIP_TTA, Analyzer, NoFace  # noqa: E402
+from pipeline import FLIP_TTA, Analyzer, InvalidScores, NoFace  # noqa: E402
 
 ZERO = os.environ.get("SPACES_ZERO_GPU", "").lower() in ("1", "true")
 DEVICE = "cuda" if ZERO or torch.cuda.is_available() else "cpu"
@@ -147,7 +147,10 @@ def analyze(file, degrade="none", progress=gr.Progress()):
             raise gr.Error(f"The analysis failed ({type(e).__name__}). Please try again.") from None
         model_wall = round(time.time() - t_model, 1)
         progress(1.0, desc=STEP_TEXT["quality"])
-        res = AN.finish(st, outs, model_s)
+        try:
+            res = AN.finish(st, outs, model_s)
+        except InvalidScores:
+            raise gr.Error("The detector returned invalid or incomplete scores. Please try again.") from None
         res["meta"]["gpu_seconds" if used == "cuda" else "cpu_model_seconds"] = model_wall
         res["meta"]["seconds"] = round(time.time() - t, 1)
         res["meta"]["device"] = used

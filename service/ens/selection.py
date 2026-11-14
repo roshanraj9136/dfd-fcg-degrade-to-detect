@@ -1,4 +1,4 @@
-"""Checkpoint selection at the decision threshold, using validation only."""
+"""Validation checkpoint selection; AUROC by default for recalibrated members."""
 import math
 
 

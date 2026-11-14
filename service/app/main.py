@@ -76,7 +76,7 @@ def worker():
         state["error"] = f"model failed to load: {e}"
         traceback.print_exc()
         return
-    from pipeline import NoFace
+    from pipeline import InvalidScores, NoFace
     while True:
         jid, path, degrade = work.get()
         job = jobs[jid]
@@ -92,6 +92,8 @@ def worker():
             log_result(res)
         except NoFace as e:
             job.update(status="error", error=str(e))
+        except InvalidScores:
+            job.update(status="error", error="The detector returned invalid or incomplete scores. Please try again.")
         except Exception as e:  # noqa: BLE001
             traceback.print_exc()
             job.update(status="error", error=f"analysis failed ({type(e).__name__})")
