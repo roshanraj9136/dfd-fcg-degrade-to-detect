@@ -26,8 +26,18 @@ import data as Dt
 import evaluate as Ev
 from weighted_fusion import folds_by_video, metadata, statistics
 
-MEMBERS = ["dfd", "pe_ft", "pe_ft_sc", "pe", "pe_sc", "clip_ft", "clip_ft_sc"]
-BASELINE = MEMBERS[:5]
+BASELINE = ["dfd", "pe_ft", "pe_ft_sc", "pe", "pe_sc"]
+CANDIDATE = os.environ.get("FUSION_CANDIDATE", "clip_ft")
+CANDIDATES = {
+    "clip_ft": dict(tag="clipft", backbone="clip", checkpoint="ft_clip/best.pt", tensor="gend_clip_ft.pt",
+                    label="GenD-CLIP (retrained)", protocol="results/ensemble/PLAN.md: Round 3 CLIP"),
+    "pe_pair": dict(tag="pe_pair", backbone="pe", checkpoint="ft_pe_paired_v1/best.pt", tensor="gend_pe_pair.pt",
+                    label="GenD-PE (paired training)", protocol="results/ensemble/PAIRED_PLAN.md"),
+}
+if CANDIDATE not in CANDIDATES:
+    raise ValueError("FUSION_CANDIDATE must be clip_ft or pe_pair")
+CANDIDATE_INFO = CANDIDATES[CANDIDATE]
+MEMBERS = BASELINE + [CANDIDATE, CANDIDATE + "_sc"]
 EXCLUDED = {"dfdc", "synth"}
 FUSION = ROOT / "service" / "app" / "fusion.json"
 
@@ -38,13 +48,13 @@ def digest(path):
 
 def source_snapshot():
     paths = [FUSION, FUSION.parent / "model.json", FUSION.parent / "gend_pe_ft.pt",
-             Dt.cache_file("ft_clip/best.pt"),
+             Dt.cache_file(CANDIDATE_INFO["checkpoint"]),
              Dt.D / "new" / "sets.csv", Dt.D / "new" / "sets_gated.csv",
              Dt.cache_file("dfd_val_old.jsonl"), Dt.cache_file("valdmg_dfd.npz"),
              Dt.D / "eval_new_old.jsonl", Dt.D / "feats_test_old.npz", Dt.D / "feats_fit_old.npz"]
     if (Dt.D / "new" / "sets_more.csv").exists():
         paths.append(Dt.D / "new" / "sets_more.csv")
-    for tag in ("pe", "peft", "clipft"):
+    for tag in ("pe", "peft", CANDIDATE_INFO["tag"]):
         paths.extend(Dt.cache_file(f"gend_{tag}_{split}.npz") for split in ("new", "fit", "rep"))
         paths.append(Dt.cache_file(f"valdmg_{tag}.npz"))
     return {str(p): digest(p) for p in paths}
@@ -97,24 +107,24 @@ def qualifies(record, baseline):
 def export_candidate(record, output):
     cfg = copy.deepcopy(json.loads(FUSION.read_text(encoding="utf-8")))
     cfg.update(members=record["members"], coef=record["coef"], intercept=record["intercept"])
-    cfg["note"] = "Frozen round-3 CLIP candidate; validation excludes synth and DFDC; not automatically deployed."
-    if "clip_ft_sc" in cfg["members"]:
-        cal = Dt.GenDSelfCal("clipft")
+    cfg["note"] = f"Frozen {CANDIDATE} experiment; validation excludes synth and DFDC; not automatically deployed."
+    if CANDIDATE + "_sc" in cfg["members"]:
+        cal = Dt.GenDSelfCal(CANDIDATE_INFO["tag"])
         selfcal = dict(mean=cal.sc.mean_.tolist(), scale=cal.sc.scale_.tolist(),
                        coef=[cal.reg.coef_.tolist()], intercept=[float(cal.reg.intercept_)])
     for member in cfg["members"]:
-        if member.startswith("clip_ft"):
-            spec = dict(type="gend", backbone="clip", frames=24, ln="gend_clip_ft.pt")
+        if member in (CANDIDATE, CANDIDATE + "_sc"):
+            spec = dict(type="gend", backbone=CANDIDATE_INFO["backbone"], frames=24, ln=CANDIDATE_INFO["tensor"])
             if member.endswith("_sc"):
                 spec["selfcal"] = selfcal
             cfg["detectors"][member] = spec
-            cfg["names"][member] = "GenD-CLIP (retrained)" + (", quality-checked" if member.endswith("_sc") else "")
+            cfg["names"][member] = CANDIDATE_INFO["label"] + (", quality-checked" if member.endswith("_sc") else "")
     dest = output / "candidate"
     dest.mkdir(parents=True, exist_ok=True)
     for member in cfg["members"]:
         spec = cfg["detectors"].get(member, {})
         if spec.get("ln"):
-            src = Dt.cache_file("ft_clip/best.pt") if member.startswith("clip_ft") else FUSION.parent / spec["ln"]
+            src = Dt.cache_file(CANDIDATE_INFO["checkpoint"]) if member in (CANDIDATE, CANDIDATE + "_sc") else FUSION.parent / spec["ln"]
             shutil.copy2(src, dest / spec["ln"])
     (dest / "fusion.json").write_text(json.dumps(cfg, separators=(",", ":"), allow_nan=False), encoding="utf-8")
 
@@ -138,7 +148,7 @@ def select(output):
             eligible.append(key)
     chosen = max(eligible, key=lambda k: (round(options[k]["cv"]["bacc"], 3),
                                         -options[k]["networks"], -len(options[k]["members"]))) if eligible else None
-    result = dict(protocol="results/ensemble/PLAN.md: Round 3 CLIP", coverage=coverage,
+    result = dict(protocol=CANDIDATE_INFO["protocol"], candidate_member=CANDIDATE, coverage=coverage,
                   options=options, chosen=chosen, snapshot=source_snapshot())
     output.mkdir(parents=True, exist_ok=True)
     (output / "selection.json").write_text(json.dumps(result, indent=2, allow_nan=False), encoding="utf-8")
@@ -199,6 +209,8 @@ def test(output):
     if (output / "test.json").exists():
         raise FileExistsError("test results already recorded; do not overwrite a frozen experiment")
     selection = json.loads((output / "selection.json").read_text(encoding="utf-8"))
+    if selection.get("candidate_member", "clip_ft") != CANDIDATE:
+        raise ValueError("candidate member differs from the frozen experiment")
     if selection["snapshot"] != source_snapshot():
         raise ValueError("weights, fusion or manifests changed after selection")
     if not selection["chosen"]:

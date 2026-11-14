@@ -1,7 +1,7 @@
 # Reliability follow-up (14 November 2026)
 
-**Status: model experiments completed; reliability deployment pending. No newly
-measured accuracy gain.** The result
+**Status: reliability fixes deployed and verified; paired PE training running.
+No newly measured accuracy gain.** The result
 remains REAL or FAKE. Invalid inference produces an analysis error.
 
 ## Reliability changes
@@ -52,7 +52,7 @@ python -m unittest discover -s tests -p "test_*.py" -v
 python -m compileall -q service/app service/ens service/space tests
 ```
 
-Local result: 34 passed in the existing Python 3.12 environment, including the
+Local result: 41 passed in the existing Python 3.12 environment, including the
 sklearn comparison. CI installs sklearn to run that comparison too.
 Tests cover the actual scoring methods isolated from GPU imports, numerical
 failures, tracking gates, split checks, CLIP routing and weighted logistic fitting.
@@ -79,8 +79,8 @@ implementations matched exactly; seven held-out fusion examples matched the
 offline scores (largest probability difference rounded to four decimals: 0.0000).
 The full real sample returned REAL, p(fake)=0.212, and the fake sample returned
 FAKE, p(fake)=1.000. These checks establish implementation parity, not a new
-accuracy estimate. A selected replacement needs its own parity checks. No model
-or website has been replaced.
+accuracy estimate. A selected replacement needs its own parity checks. Model
+weights and website accuracy figures remain unchanged.
 
 A split-rule ambiguity was sent to the owner: AGENTS reserves Counterfactual
 groups 25–36 from tuning, while previous code uses 25–30 for validation. The above
@@ -122,3 +122,22 @@ The combined manifests have 4,798 unique video IDs, no ID pointing to conflictin
 files, and no identical repository/path occurring across declared splits. This
 does not establish identity-disjoint evaluation. GenD's paired-data motivation
 is documented in [the authors' paper](https://arxiv.org/html/2508.06248v2#S4.SS4).
+
+## Deployment and next training run
+
+The reliability backend is live at Space revision
+`fed1102e759487ea0766e7576e643b169ce4332d`. The initial upload exposed CRLF line
+endings in the Linux package list; the build script now normalizes text artifacts
+to UTF-8 without BOM and LF. The corrected build reached RUNNING and `/health`
+reported ready. The deployed real sample returned REAL, p(fake)=0.207; the fake
+sample returned FAKE, p(fake)=1.000. Both used the GPU. The existing binary-label
+HTML/JavaScript check passed. Rollback snapshot: Space revision
+`4bba523700756604d8a7ff9457abfbdac24580c9`.
+
+Completed preparation of 96 missing FF++ real originals, enabling 131 verified
+pairs (119 originals; 12 fakes excluded because their originals were reserved).
+The separate store contains 2,143 training videos and 353 validation videos;
+the continuation selects checkpoints on 313 validation videos after excluding
+synth. `PAIRED_PLAN.md` freezes the 1,000-step continuation and subsequent fusion
+comparison. The queued evaluator runs only after successful training, freezes
+its validation choice before test evaluation, and never deploys automatically.

@@ -182,6 +182,10 @@ class TrainingTests(unittest.TestCase):
             self.assertEqual(fn("peft")[0], "pe")
             with self.assertRaises(ValueError):
                 fn("unknown")
+            with self.assertRaises(ValueError):
+                fn("pe_pair")
+        with patch.dict(os.environ, {"GEND_LN": "paired.pt"}, clear=True):
+            self.assertEqual(fn("pe_pair"), ("pe", "paired.pt"))
 
     def test_checkpoint_selection_matches_app_threshold(self):
         a = {c: dict(auc=0.99, bacc=0.60) for c in ("clean", "degraded")}

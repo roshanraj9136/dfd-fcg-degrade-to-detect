@@ -71,10 +71,12 @@ def rows():
 
 
 def gend_settings(name):
-    if name not in ("pe", "peft", "clip", "clipft"):
+    if name not in ("pe", "peft", "clip", "clipft", "pe_pair"):
         raise ValueError("member must be dfd, dfdft, pe, peft, clip or clipft")
     kind = "clip" if name.startswith("clip") else "pe"
     checkpoint = os.environ.get("GEND_LN")
+    if name == "pe_pair" and not checkpoint:
+        raise ValueError("pe_pair requires an explicit GEND_LN checkpoint")
     if checkpoint is None and name.endswith("ft"):
         checkpoint = str(Path(r"D:\dfd-data\ens") / f"ft_{kind}" / "best.pt")
     return kind, checkpoint
