@@ -152,7 +152,8 @@ def main():
                    ffpp_blur_acc_original=acc("ffpp:GB_5", base), dfdc_acc=acc("dfdc:clean"),
                    overall_acc=float(right.mean()), overall_acc_original=float(right_base.mean()), overall_videos=len(pool),
                    synth_caught=opts[CHOSEN]["synth"]["caught"], synth_n=opts[CHOSEN]["synth"]["n"],
-                   datasets=len(GROUP_NEW) + 3, bands=bands, option=CHOSEN)
+                   datasets=len({g.replace("_open", "") for g in GROUP_NEW} | {"ffpp", "dfdc"}),   # FaceShifter is part of FF++
+                   test_sets=len(GROUP_NEW) + 3, bands=bands, option=CHOSEN)
     (ROOT / "web" / "checker" / "src" / "accuracy.json").write_text(json.dumps(checker, indent=1))
     out["checker"] = checker
     for p in (ROOT / "results" / "ensemble" / "results.json", ROOT / "web" / "viva" / "src" / "ensemble.json"):

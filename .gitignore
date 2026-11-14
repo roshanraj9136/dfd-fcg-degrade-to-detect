@@ -10,3 +10,10 @@ dist/
 # raw data, aligned faces and cached features live outside the repo (DFD_DATA)
 /data/
 *.pkl
+
+# LaTeX build files
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
