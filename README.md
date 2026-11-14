@@ -55,6 +55,34 @@ Full tables for every rule and protocol: [`results/tables.md`](results/tables.md
 | ![methods](results/figures/f2_methods.png) | ![anatomy](results/figures/f3_drift_anatomy.png) |
 <!-- RESULTS-END -->
 
+<!-- ROUND2-START -->
+## Round 2: several detectors, one firm answer
+
+The live checker now combines DFD-FCG (released), GenD-PE retrained, GenD-PE retrained + self-cal., GenD-PE, GenD-PE + self-cal. Each detector's quality bias is removed with our self-calibration; a logistic-regression combiner fitted on 353 validation videos turns their scores into one REAL / FAKE answer with a confidence (no "not sure"). Plan, selection rule and switch rule were written before testing: [`results/ensemble/PLAN.md`](results/ensemble/PLAN.md).
+
+| held-out test videos | DFD-FCG (released) | GenD-PE retrained | GenD-PE retrained + self-cal. | GenD-PE | GenD-PE + self-cal. | **combined (live)** |
+|---|---|---|---|---|---|---|
+| Celeb-DF v2 test | 78.3% | 90.0% | 87.5% | 75.8% | 85.0% | **92.5%** |
+| Social-media deepfakes 2026, test part | 55.0% | 92.0% | 83.8% | 63.8% | 63.5% | **89.2%** |
+| MAVOS-DD 2025, methods seen in training | 54.7% | 87.4% | 83.6% | 52.8% | 51.6% | **83.4%** |
+| MAVOS-DD 2025, methods never seen | 60.7% | 76.8% | 75.0% | 58.9% | 64.3% | **75.0%** |
+| SynthForensics 2026 (fakes only: caught) | 35.6% | 57.6% | 40.7% | 62.7% | 49.2% | **76.3%** |
+| AI talking heads 2026 (fakes only: caught) | 15.0% | 100.0% | 100.0% | 46.2% | 48.8% | **100.0%** |
+| FF++ test (as it is / blur / compression) | 84.6% | 78.9% | 75.1% | 72.9% | 79.4% | **79.0%** |
+| FaceShifter (never trained on) | 70.5% | 58.3% | 56.7% | 66.8% | 65.8% | **63.5%** |
+| DFDC part 0 (never trained on) | 58.8% | 57.5% | 55.4% | 60.0% | 63.3% | **60.4%** |
+
+Balanced accuracy at 0.5 unless noted. Newer sets (mean of the four with real and fake videos): 62.2% → **85.0%** (+22.8 points, bootstrap 95% range +17.4 to +28.3); FF++ −5.6; DFDC +1.7. Switch rule not met.
+
+**Self-calibration transfers to a second detector.** GenD-PE retrained (Yermakov et al., WACV 2026) calls 17.1% of real FF++ test videos FAKE under strong blur and 4.3% under heavy compression. The same read-out recipe on its class token (same 49 fit videos, no retraining) brings this to 4.3% and 2.9%.
+
+All 705 held-out test videos as uploaded (no added damage): 63.1% → **85.1%** correct.
+
+Confidence on held-out videos: 50–65%: right 58.1% (12.2% of answers); 65–80%: right 76.4% (17.4% of answers); 80–100%: right 91.9% (70.4% of answers).
+
+Reproduce: `service/ens/` (`score_gend.py`, `train_gend.py`, `evaluate.py`, `report.py`, `export_live.py`); the live code is `service/app/gend_live.py` + `pipeline.py`; parity checks `tests/check_gend_live.py`, `tests/check_fusion_live.py`.
+<!-- ROUND2-END -->
+
 ---
 
 ## What is new compared with the paper and with our earlier work

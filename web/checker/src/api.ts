@@ -13,7 +13,8 @@ export type Result = {
   parts: Record<string, number>;
   face_png: string; heat_png: string;
   sure?: boolean; agreement?: number; margin?: number;
-  faces?: { p: number; p_original: number; p_strict: number }[];
+  confidence?: number; p_dfd?: number; members?: Record<string, number> | null; detectors?: string[];
+  faces?: { p: number; p_original: number; p_strict: number; p_dfd?: number }[];
   timeline?: { start: number; end: number; p: number; faces: number[] }[];
   meta: {
     fps: number; frames_used: number; clips: number; width: number; height: number; degrade: string; seconds: number;

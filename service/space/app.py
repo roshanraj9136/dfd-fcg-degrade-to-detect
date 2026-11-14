@@ -70,10 +70,13 @@ STEP_TEXT = {"face": "face: finding and aligning the face", "landmarks": "face: 
 
 
 def _gpu_seconds(crops, clip_idx):
-    """GPU time to book for one check: grows with the number of DFD-FCG passes (faces x clips x views + blur test).
-    ZeroGPU checks the booked time against the visitor's remaining quota, so it is kept close to the real need."""
-    passes = len(crops) * len(clip_idx) * (3 if FLIP_TTA else 2)
-    return int(min(90, 10 + 0.5 * passes))
+    """GPU time to book for one check: grows with the number of DFD-FCG passes (faces x clips x views + blur test, plus
+    the passes of any extra DFD-FCG checkpoint of the fusion) and the GenD frames. ZeroGPU checks the booked time
+    against the visitor's remaining quota, so it is kept close to the real need."""
+    extra_dfd = sum(1 for m in AN.extra.values() if hasattr(m, "rec"))
+    extra_gend = len(AN.extra) - extra_dfd
+    passes = len(crops) * len(clip_idx) * ((3 if FLIP_TTA else 2) + extra_dfd) + len(crops) * 2 * extra_gend
+    return int(min(120, 10 + 0.5 * passes))
 
 
 @spaces.GPU(duration=_gpu_seconds)   # only the DFD-FCG passes use the GPU; face finding stays on the CPU
@@ -189,10 +192,10 @@ def ui_check(video, degrade, progress=gr.Progress()):
     res = analyze(video, {"As it is": "none", "Add strong blur": "blur", "Add heavy compression": "compress"}[degrade],
                   progress)
     fake = res["verdict"] == "FAKE"
-    md = (f"## {'🔴 Looks like a deepfake' if fake else '🟢 Looks like a real video'}"
-          f"{'' if res['sure'] else ' (not sure)'}\n"
-          f"**{res['p'] * 100:.0f}% fake** after the quality correction "
-          f"(original DFD-FCG: {res['p_original'] * 100:.0f}%). Blur test: {res['blur_response'][2]:+.2f} "
+    md = (f"## {'🔴 FAKE: this video is a deepfake' if fake else '🟢 REAL: this video is authentic'}\n"
+          f"**{res['confidence'] * 100:.0f}% confidence** ({res['p'] * 100:.0f}% fake; "
+          f"detectors: {', '.join(res.get('detectors') or ['DFD-FCG'])}). "
+          f"Original DFD-FCG alone: {res['p_original'] * 100:.0f}% fake. Blur test: {res['blur_response'][2]:+.2f} "
           f"(real faces usually react with a positive number).")
     small = {k: v for k, v in res.items() if not k.endswith("_png")}
     return md, _img(res["face_png"]), _img(res["heat_png"]), small

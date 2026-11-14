@@ -67,4 +67,16 @@ def ensure_models():
     for name in ["s3fd-619a316812.pth", "2DFAN4-11f355bf06.pth.tar"]:
         _fetch(f"face_alignment/{name}", hub / name, token)
     os.environ["DFD_FCG_CKPT"] = str(ckpt)
+    # extra detectors of the fusion (fusion.json next to the pipeline): more DFD-FCG checkpoints from the private
+    # repo; GenD weights are public (yermandy/GenD_*) and are fetched by gend_live itself
+    import json
+    fj = Path(__file__).resolve().parent / os.environ.get("DFD_FUSION_JSON", "fusion.json")
+    if fj.exists():
+        for name, cfg in json.load(open(fj)).get("detectors", {}).items():
+            if cfg.get("type") == "dfd":
+                _fetch(cfg["weights"], ROOT / cfg["weights"], token)
+            else:
+                from huggingface_hub import hf_hub_download
+                from gend_live import REPOS
+                hf_hub_download(REPOS[cfg.get("backbone", "clip")], "model.safetensors")
     shutil.rmtree(ROOT / "dl", ignore_errors=True)

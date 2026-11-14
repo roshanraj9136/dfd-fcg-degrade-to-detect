@@ -12,18 +12,20 @@ license: mit
 short_description: Upload a face video, get REAL or FAKE with a short reason
 ---
 
-# Deepfake video checker (self-calibrated DFD-FCG)
+# Deepfake video checker (DFD-FCG + GenD, self-calibrated, combined)
 
 Backend of the website https://dfd-fcg-degrade-to-detect.vercel.app. Made by Roshan Raj.
 
-* DFD-FCG (Han et al., CVPR 2025), the authors' released checkpoint, on ZeroGPU.
-* Self-calibration (our add-on): a linear read-out of the model's own features estimates how much FAKE
-  evidence blur and compression added to the video, and removes it. No retraining.
-* Blur test and a per-region evidence map as a short explanation.
-* Every clear face in the video is checked (up to 2 people; a swap can be on either), with 8 clips of 10 frames
-  from the first 10 seconds. The most suspicious face decides. A "sure / not sure" flag marks answers close to the line.
-* Face finding runs on the Space's CPU; only the DFD-FCG passes use ZeroGPU (the booked time grows with the number
-  of faces). When a visitor's free GPU time is used up, those passes run on a CPU copy of the model instead
+* Detectors on the same aligned faces: DFD-FCG (Han et al., CVPR 2025, released checkpoint; 8 clips of 10 frames)
+  and GenD-PE (Yermakov et al., WACV 2026; 24 single frames), released and retrained on 2025-2026 fakes.
+* Self-calibration (our add-on): a linear read-out of each detector's own features estimates how much FAKE
+  evidence blur and compression added, and removes it. No retraining.
+* A combiner fitted on validation videos only turns the detectors' scores into one firm answer, REAL or FAKE,
+  with its confidence.
+* Every clear face in the video is checked (up to 2 people; a swap can be on either), from the first 10 seconds.
+  The most suspicious face decides.
+* Face finding runs on the Space's CPU; only the detector passes use ZeroGPU (the booked time grows with the number
+  of faces). When a visitor's free GPU time is used up, those passes run on a CPU copy of the models instead
   (same scores, slower).
 
 API: `/analyze` (file, degrade = none | blur | compress) and `/health`, e.g. with `@gradio/client`.

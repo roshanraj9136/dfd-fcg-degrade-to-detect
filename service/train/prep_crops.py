@@ -27,7 +27,7 @@ from pipeline import Analyzer, NoFace, _warm_numba, clip_layout, usable_cpus, wi
 
 DEV, OUT, SETS = sys.argv[1], Path(sys.argv[2]), sys.argv[3:]
 VIDEOS = Path(r"D:\dfd-data\new\videos")
-LOGS = [Path(r"D:\dfd-data\make_sets.log"), Path(r"D:\dfd-data\make_sets_gated.log")]
+LOGS = [Path(p) for p in os.environ.get("PREP_LOGS", r"D:\dfd-data\make_sets.log;D:\dfd-data\make_sets_gated.log").split(";")]
 OUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -36,6 +36,7 @@ def face_only(device):
     import face_alignment
     an = Analyzer.__new__(Analyzer)
     n = usable_cpus() if device == "cuda" else max(1, (os.cpu_count() or 4) // 2)
+    n = int(os.environ.get("PREP_THREADS", n))
     torch.set_num_threads(n)
     an.threads = n
     an.fa = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_D, face_detector="sfd",
@@ -80,6 +81,10 @@ def main():
         rows += list(csv.DictReader(open(f)))
     order = {"train": 0, "val": 1, "test": 2, "test_open": 3}
     rows.sort(key=lambda r: order[r["set"]])
+    if os.environ.get("PREP_SHUFFLE"):                     # mixed sources: a partial run is still balanced
+        import random
+        random.Random(0).shuffle(rows)
+        rows.sort(key=lambda r: order[r["set"]])
     print(f"{DEV}: {len(rows)} videos", flush=True)
     t0, done = time.time(), 0
     while True:

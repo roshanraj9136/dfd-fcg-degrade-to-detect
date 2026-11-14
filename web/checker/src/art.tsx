@@ -109,7 +109,7 @@ export function Gauge({ p, verdict, unsure = false }: { p: number; verdict: "REA
       <circle cx="70" cy="70" r={R} fill="none" stroke={color} strokeWidth="14" strokeLinecap="round"
         strokeDasharray={`${C * conf} ${C}`} transform="rotate(-90 70 70)" />
       <text x="70" y="66" textAnchor="middle" fontSize="26" fontWeight="800" fill={color}>{verdict}</text>
-      <text x="70" y="90" textAnchor="middle" fontSize="13" style={{ fill: "var(--color-slate-500)" }}>{Math.round(conf * 100)}% sure</text>
+      <text x="70" y="90" textAnchor="middle" fontSize="13" style={{ fill: "var(--color-slate-500)" }}>{Math.round(conf * 100)}% confidence</text>
     </svg>
   );
 }
@@ -131,7 +131,7 @@ export function ScoreBar({ p, label, muted = false }: { p: number; label: string
       <text x="160" y="50" fontSize="10" style={{ fill: "var(--color-slate-500)" }} textAnchor="middle">0.5</text>
       <text x="308" y="50" fontSize="10" fill="#dc2626" textAnchor="end">fake</text>
       <circle cx={x} cy="26" r="9" fill={fake ? "#dc2626" : "#16a34a"} style={{ stroke: "var(--color-white)" }} strokeWidth="3" opacity={muted ? 0.65 : 1} />
-      <text x={x} y="10" fontSize="11" fontWeight="700" textAnchor="middle" fill={fake ? "#dc2626" : "#16a34a"} opacity={muted ? 0.75 : 1}>
+      <text x={Math.min(294, Math.max(26, x))} y="10" fontSize="11" fontWeight="700" textAnchor="middle" fill={fake ? "#dc2626" : "#16a34a"} opacity={muted ? 0.75 : 1}>
         {Math.round(p * 100)}%
       </text>
     </svg>

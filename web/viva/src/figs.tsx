@@ -605,3 +605,73 @@ export function CoverageFig({ curve, chosen }: { curve: CurvePt[]; chosen: numbe
     </svg>
   );
 }
+
+/* ------------------------------------------------------------------ round 2: several detectors, one answer */
+export type MemberBox = { name: string; sub: string; tag: string; mine: boolean; sc: boolean };
+
+export function FusionArchFig({ members, nVal }: { members: MemberBox[]; nVal: number }) {
+  const rowH = 92, top = 70;
+  const H = Math.max(360, top + members.length * rowH + 70);
+  const mid = top + (members.length * rowH) / 2 - 10;
+  return (
+    <svg viewBox={`0 0 1240 ${H}`} className="w-full min-w-[900px]" role="img" aria-label="Round 2 architecture: several detectors and a combiner">
+      <Defs />
+      <rect x="16" y="14" width="16" height="16" rx="4" fill={C.panel} stroke={C.line} />
+      <T x={40} y={27} size={13}>published detector (authors' weights or code)</T>
+      <rect x="370" y="14" width="16" height="16" rx="4" fill={C.brandSoft} stroke={C.brand} strokeWidth="2" />
+      <T x={394} y={27} size={13} color={C.brand} w={700}>my work</T>
+
+      {/* input + faces */}
+      <Box x={16} y={mid - 70} w={150} h={160} />
+      {[0, 1, 2].map((k) => <rect key={k} x={40 + k * 10} y={mid - 52 + k * 10} width="80" height="80" rx="8" fill="#fff" stroke={C.line} />)}
+      <Face x={100} y={mid - 4} s={0.9} />
+      <T x={91} y={mid + 66} size={14} w={700} color={C.ink} anchor="middle">Uploaded video</T>
+      <Arrow d={`M168 ${mid + 10} H 196`} />
+      <Box x={200} y={mid - 70} w={170} h={160} fill={C.panel} />
+      <T x={285} y={mid - 40} size={14.5} w={800} color={C.ink} anchor="middle">Find + align faces</T>
+      <T x={285} y={mid - 18} size={12} color={C.muted} anchor="middle">S3FD + 2D-FAN, every</T>
+      <T x={285} y={mid - 2} size={12} color={C.muted} anchor="middle">clear person, first 10 s</T>
+      <T x={285} y={mid + 24} size={12} color={C.text} anchor="middle">same 150×150 crops</T>
+      <T x={285} y={mid + 40} size={12} color={C.text} anchor="middle">for every detector</T>
+
+      {/* detectors */}
+      {members.map((m, i) => {
+        const y = top + i * rowH;
+        return (
+          <g key={m.name}>
+            <Arrow d={`M372 ${mid + 10} C 400 ${mid + 10}, 400 ${y + 36}, 428 ${y + 36}`} />
+            <Box x={432} y={y} w={330} h={72} fill={m.mine ? C.brandSoft : C.panel} stroke={m.mine ? C.brand : C.line} sw={m.mine ? 2 : 1.5} />
+            <rect x={446} y={y + 12} width={52} height={20} rx={10} fill={m.mine ? C.brand : "#cbd5e1"} />
+            <T x={472} y={y + 26} size={10.5} w={800} color={m.mine ? "#fff" : C.text} anchor="middle">{m.tag}</T>
+            <T x={508} y={y + 27} size={14.5} w={800} color={m.mine ? C.brand : C.ink}>{m.name}</T>
+            <T x={446} y={y + 52} size={12} color={C.text}>{m.sub}</T>
+            {m.sc && (
+              <g>
+                <Arrow d={`M764 ${y + 36} H 792`} color="brand" />
+                <Box x={796} y={y + 14} w={150} h={44} r={12} fill={C.brandSoft} stroke={C.brand} sw={1.8} />
+                <T x={871} y={y + 33} size={12.5} w={800} color={C.brand} anchor="middle">self-calibration</T>
+                <T x={871} y={y + 49} size={11} color={C.brand} anchor="middle">remove quality bias</T>
+                <Arrow d={`M948 ${y + 36} C 975 ${y + 36}, 975 ${mid + 10}, 1000 ${mid + 10}`} color="brand" />
+              </g>
+            )}
+            {!m.sc && <Arrow d={`M764 ${y + 36} C 900 ${y + 36}, 900 ${mid + 10}, 1000 ${mid + 10}`} />}
+          </g>
+        );
+      })}
+
+      {/* combiner + answer */}
+      <Box x={1004} y={mid - 70} w={220} h={160} fill={C.brandSoft} stroke={C.brand} sw={2.2} />
+      <rect x={1020} y={mid - 58} width={44} height={20} rx={10} fill={C.brand} />
+      <T x={1042} y={mid - 44} size={11} w={800} color="#fff" anchor="middle">NEW</T>
+      <T x={1072} y={mid - 43} size={15} w={800} color={C.brand}>Combiner</T>
+      <T x={1020} y={mid - 18} size={12} color={C.ink}>logistic regression on the</T>
+      <T x={1020} y={mid - 2} size={12} color={C.ink}>detectors' scores, fitted on</T>
+      <T x={1020} y={mid + 14} size={12} color={C.ink}>{nVal} validation videos only</T>
+      <T x={1020} y={mid + 38} size={13} w={800} color={C.ink}>→ REAL or FAKE</T>
+      <T x={1020} y={mid + 56} size={12} color={C.muted}>+ confidence, no “not sure”</T>
+      <T x={620} y={H - 18} size={12.5} color={C.muted} anchor="middle" italic>
+        The most suspicious person decides. Test videos were never used for training, choosing checkpoints, fitting the combiner or choosing detectors.
+      </T>
+    </svg>
+  );
+}

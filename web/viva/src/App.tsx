@@ -1,11 +1,13 @@
 import { Fragment, useState } from "react";
 import type { ReactNode } from "react";
 import fails from "./fails.json";
+import ensemble from "./ensemble.json";
 import retrain from "./retrain.json";
 import scores from "./scores.json";
 import upgrade from "./upgrade.json";
 import websiteCheck from "./website_check.json";
-import { BlurTestFig, FixFig, HeroFig, ModelArchFig, ProtocolFig, ScoreStrips, SystemFig, V2Fig } from "./figs";
+import { BlurTestFig, FixFig, FusionArchFig, HeroFig, ModelArchFig, ProtocolFig, ScoreStrips, SystemFig, V2Fig } from "./figs";
+import type { MemberBox } from "./figs";
 
 const LINKS = {
   checker: "https://dfd-fcg-degrade-to-detect.vercel.app",
@@ -17,7 +19,7 @@ const LINKS = {
 
 const NAV: [string, string][] = [
   ["summary", "In short"], ["model", "Model"], ["problem", "Problem"], ["cause", "Cause"], ["fix", "My fix"],
-  ["results", "Results"], ["limits", "Where it fails"], ["retrain", "Retraining"], ["live", "Live checker"], ["novelty", "Novelty"],
+  ["results", "Results"], ["limits", "Where it fails"], ["retrain", "Retraining"], ["round2", "Final system"], ["live", "Live checker"], ["novelty", "Novelty"],
   ["questions", "Questions"], ["script", "Script"],
 ];
 
@@ -58,6 +60,7 @@ export default function App() {
         <Results />
         <Limits />
         <Retrain />
+        <Round2 />
         <Live />
         <Novelty />
         <Questions />
@@ -183,7 +186,8 @@ function Hero() {
         <p className="mt-4 text-lg text-slate-600">
           DFD-FCG (CVPR 2025) is a top video deepfake detector. I showed that it calls <b className="text-slate-800">real videos fake</b> when
           they are blurry or compressed, found <b className="text-slate-800">why</b> inside the model, fixed it <b className="text-slate-800">without
-          retraining</b>, and built a public checker that says when it is <b className="text-slate-800">not sure</b>.
+          retraining</b>, showed the same fix works on a <b className="text-slate-800">second detector</b> (GenD, 2026), and built a public checker
+          that combines retrained detectors into <b className="text-slate-800">one firm answer</b>.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <a className="btn-primary" href={LINKS.checker}>Try the live checker</a>
@@ -387,14 +391,15 @@ function Limits() {
       <Card className="mt-4 border-amber-200 bg-amber-50">
         <div className="font-bold text-amber-800">A real example from the live site</div>
         <p className="mt-1 text-sm text-slate-700">A fake vertical phone video (480×854) uploaded to the checker scored <b>48% fake</b>: right on the line. That is the
-          pattern above. The checker now shows such answers as <b>NOT SURE</b> instead of a confident REAL. Over all test answers, “sure”
-          answers are right {pc(s.all.acc_sure)} of the time and “not sure” ones {pc(s.all.acc_unsure)}; on DFDC only {pc(s.dfdc.share)} of answers are “sure”.</p>
+          pattern above. Version 2 of the checker showed such answers as <b>NOT SURE</b>; over all test answers, “sure” answers were right
+          {" "}{pc(s.all.acc_sure)} of the time and “not sure” ones {pc(s.all.acc_unsure)}; on DFDC only {pc(s.dfdc.share)} of answers were “sure”.
+          The final system (“Final system”) replaces this with retrained detectors and one firm answer.</p>
       </Card>
       <Card className="mt-4">
-        <div className="font-bold text-slate-900">What would make it surer</div>
-        <p className="mt-1 text-sm text-slate-600">Retraining the authors' side network (0.25 M parameters; CLIP stays frozen) on newer data. I checked that it fits
-          my 4 GB GPU (1.6 GB, 0.33 s per training step). Next step, in progress: fine-tuning on Celeb-DF v2, more DFDC parts, 2026 social-media
-          deepfakes and 2026 AI-generated talking heads, with the same {UP.videos} test videos kept out of training for a fair before/after.</p>
+        <div className="font-bold text-slate-900">What made it surer</div>
+        <p className="mt-1 text-sm text-slate-600">Retraining on newer data (Celeb-DF v2, MAVOS-DD 2025, SynthForensics 2026, 2026 social-media deepfakes and
+          AI-generated talking heads) and adding a second, frame-level detector, with the same {UP.videos} test videos kept out of training.
+          The next two sections show both steps and their results.</p>
       </Card>
       <Say>On videos unlike its training data, DFD-FCG's ranking drops to a coin flip. My system detects when it is outside what it knows
         and says “not sure”, instead of giving a confident wrong answer.</Say>
@@ -497,13 +502,152 @@ function Retrain() {
   );
 }
 
+/* ------------------------------------------------------------------ round 2: several detectors, one firm answer */
+type EM = { n: number; acc: number; false_alarm?: number; caught?: number; bacc?: number; auroc?: number };
+const EN = ensemble as unknown as {
+  chosen: string; members: string[]; n_val: number;
+  options: Record<string, Record<string, EM> & { mean_new_bacc: number; mean_new_auroc: number; fakeonly_caught: number; cv_val_bacc?: number }>;
+  selfcal: Record<string, Record<string, { raw: EM; cal: EM }>>;
+  decision: { gain_new_sets: number; change_ffpp: number; change_dfdc: number; deploy: boolean; live?: string; live_reason?: string };
+  ci95: { new_sets: number[]; ffpp: number[]; dfdc: number[] };
+  fusion: { members: string[]; coef: number[]; intercept: number };
+  checker: { bands: { lo: number; hi: number; acc: number | null; share: number; n: number }[]; overall_acc: number; new_videos: number };
+};
+const CK = EN.checker;
+const MB: Record<string, MemberBox> = {
+  dfd: { name: "DFD-FCG (CVPR 2025)", sub: "released weights · 8 clips of 10 frames per face", tag: "VIDEO", mine: false, sc: true },
+  dfdft: { name: "DFD-FCG, retrained (round 1)", sub: "its side network fine-tuned on 2025–2026 data", tag: "VIDEO", mine: true, sc: true },
+  pe: { name: "GenD-PE (WACV 2026)", sub: "released weights · 24 single frames per face", tag: "FRAME", mine: false, sc: false },
+  pe_sc: { name: "GenD-PE (WACV 2026)", sub: "released weights · 24 single frames per face", tag: "FRAME", mine: false, sc: true },
+  pe_ft: { name: "GenD-PE, retrained", sub: "LayerNorms (0.03%) fine-tuned on 2025–26 data", tag: "FRAME", mine: true, sc: false },
+  pe_ft_sc: { name: "GenD-PE, retrained", sub: "LayerNorms (0.03%) fine-tuned on 2025–26 data", tag: "FRAME", mine: true, sc: true },
+  clip: { name: "GenD-CLIP (WACV 2026)", sub: "released weights · 24 single frames per face", tag: "FRAME", mine: false, sc: false },
+  clip_sc: { name: "GenD-CLIP (WACV 2026)", sub: "released weights · 24 single frames per face", tag: "FRAME", mine: false, sc: true },
+  clip_ft: { name: "GenD-CLIP, retrained", sub: "its LayerNorms fine-tuned on 2025–2026 data", tag: "FRAME", mine: true, sc: false },
+  clip_ft_sc: { name: "GenD-CLIP, retrained", sub: "its LayerNorms fine-tuned on 2025–2026 data", tag: "FRAME", mine: true, sc: true },
+};
+const G2: [string, string, "bacc" | "caught"][] = [
+  ["celebdf", "Celeb-DF v2 (2020)", "bacc"], ["social", "Social-media deepfakes (2026)", "bacc"],
+  ["mavos", "MAVOS-DD, methods seen in training (2025)", "bacc"], ["mavos_open", "MAVOS-DD, methods never seen (2025)", "bacc"],
+  ["sf", "SynthForensics, AI-made people (2026), fakes caught", "caught"], ["synth", "AI talking heads (2026), fakes caught", "caught"],
+  ["ffpp", "FF++ test, 3 website options", "bacc"], ["fsh", "FaceShifter, never trained on", "bacc"], ["dfdc", "DFDC, never trained on", "bacc"],
+];
+const short = (m: string) => (MB[m]?.name ?? m).replace(" (CVPR 2025)", "").replace(" (WACV 2026)", "") + (m.endsWith("_sc") && !m.startsWith("dfd") ? " + self-cal." : "");
+const ptsS = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)}`;
+const rangeS = (r: number[]) => `${ptsS(r[0])} to ${ptsS(r[1])}`;
+
+function Round2() {
+  const o = EN.options, c = EN.chosen, base = o.dfd, fin = o[c], d = EN.decision;
+  const gendKey = EN.selfcal.pe ? "pe" : Object.keys(EN.selfcal)[0];
+  const sc = gendKey ? EN.selfcal[gendKey] : undefined;
+  const cols = ["dfd", ...EN.members.filter((m) => m !== "dfd")];
+  // one box per network: a member with and one without self-calibration share the same network
+  const nets = Array.from(new Set(EN.members.map((m) => (m.endsWith("_sc") && m !== "dfd" ? m.slice(0, -3) : m))));
+  const boxes: MemberBox[] = nets.map((n) => {
+    const b = MB[n] ?? { name: n, sub: "", tag: "", mine: false, sc: false };
+    const withSc = n === "dfd" || EN.members.includes(`${n}_sc`);
+    return { ...b, sc: withSc, sub: b.sub };
+  });
+  const cell = (m: string, g: string, k: "bacc" | "caught") => {
+    const v = o[m]?.[g]?.[k];
+    const ref = base[g]?.[k];
+    const good = m !== "dfd" && v != null && ref != null && v > ref + 1e-9, bad = m !== "dfd" && v != null && ref != null && v < ref - 1e-9;
+    return <span className={m === c ? `font-bold ${good ? "text-real" : bad ? "text-fake" : "text-slate-900"}` : "text-slate-600"}>{pc(v)}</span>;
+  };
+  const steps: [string, ReactNode][] = [
+    ["A fake upload was called REAL", <>“Where it fails” traced it: DFD-FCG only learned 2018–19 face swaps, so on newer fakes its score sits near 50%.</>],
+    ["Round 1: retrain DFD-FCG", <>Fine-tuning its side network on 2025–26 data gained {ptsS(RT.decision.gain_new_sets)} points on newer fakes but lost
+      {" "}{Math.abs(RT.decision.change_dfdc * 100).toFixed(1)} on DFDC, so it failed my rule alone.</>],
+    ["Try a different kind of detector", sc ? <>GenD (WACV 2026) reads single frames, not clips. Off the shelf, under strong blur it called
+      {" "}<b>{p0(sc["ffpp:GB_5"].raw.false_alarm)}</b> of real FF++ videos FAKE: the same collapse I found in DFD-FCG, even worse.</> : "GenD (WACV 2026) reads single frames."],
+    ["Carry my fix over, unchanged", sc ? <>Self-calibration on GenD's own features, same recipe and fit videos: those false alarms fell to
+      {" "}<b>{p0(sc["ffpp:GB_5"].cal.false_alarm)}</b>. The method is not tied to one model.</> : "Self-calibration applied to GenD."],
+    ["Retrain GenD and combine", <>LayerNorm-only fine-tuning on 2025–26 data lifted GenD's validation score from 0.72 to 0.92. A combiner fitted on
+      {" "}{EN.n_val} validation videos (clean, blurred and compressed copies) weighs the detectors. Chosen by validation only, tested once.</>],
+  ];
+  return (
+    <Section id="round2" n="Round 2 · the final system" tone="brand"
+      title="Several detectors, one firm answer: REAL or FAKE"
+      lead={<>Round 1 showed one detector cannot cover old and new fakes at once. So the checker now runs {nets.length} detectors on the same
+        faces, removes their quality bias with my self-calibration, and a combiner turns their scores into one answer with a confidence
+        number. There is no “not sure” any more.</>}>
+      <Fig caption="Same face crops for every detector. Indigo = my work: retraining, self-calibration on each detector, the combiner and the rules. Each GenD network is passed to the combiner both with and without self-calibration.">
+        <FusionArchFig members={boxes} nVal={EN.n_val} />
+      </Fig>
+
+      <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <Big k="Newer fakes (2025–2026)" v={<>{pc(base.mean_new_bacc)} → {pc(fin.mean_new_bacc)}</>} tone="real"
+          text={<>balanced accuracy on 4 held-out sets; 95% range of the gain {rangeS(EN.ci95.new_sets)} points</>} />
+        <Big k="FF++ test, 3 options" v={<>{pc(base.ffpp.bacc)} → {pc(fin.ffpp.bacc)}</>} tone="brand"
+          text={<>as it is, strong blur, heavy compression (range {rangeS(EN.ci95.ffpp)})</>} />
+        <Big k="DFDC, never trained on" v={<>{pc(base.dfdc.bacc)} → {pc(fin.dfdc.bacc)}</>} tone="ink"
+          text={<>the hardest set: still the weak spot (range {rangeS(EN.ci95.dfdc)})</>} />
+      </div>
+
+      <h3 className="mt-8 text-lg font-bold text-slate-900">How I got here</h3>
+      <ol className="mt-3 grid gap-3 md:grid-cols-5">
+        {steps.map(([t, x], i) => (
+          <li key={t} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">{i + 1}</div>
+            <div className="mt-2 font-semibold text-slate-900">{t}</div>
+            <p className="mt-1 text-sm text-slate-600">{x}</p>
+          </li>
+        ))}
+      </ol>
+
+      <h3 className="mt-8 text-lg font-bold text-slate-900">Every held-out test set</h3>
+      <div className="mt-2">
+        <Table head={["Test videos (never used before testing)", ...cols.map((m) => (m === "dfd" ? "DFD-FCG (before)" : short(m))), "Combined (live)"]}
+          rows={G2.map(([g, name, k]) => [name, ...cols.map((m) => cell(m, g, k)), cell(c, g, k)])}
+          note={<>Balanced accuracy at the 0.5 line (real and fake count equally); sets with only fakes show the share caught. Newer sets: live
+            layout (8 clips, every face); FF++ / FaceShifter / DFDC: research protocol, mean of “as it is”, strong blur and heavy compression.</>} />
+      </div>
+
+      {sc && (
+        <>
+          <h3 className="mt-8 text-lg font-bold text-slate-900">Self-calibration works on a second detector</h3>
+          <div className="mt-2">
+            <Table head={["GenD on real videos", "False alarms before → after", "Balanced accuracy before → after"]}
+              rows={([["FF++, as it is", "ffpp:clean"], ["FF++, strong blur", "ffpp:GB_5"], ["FF++, heavy compression", "ffpp:VC_5"],
+                ["DFDC, as it is", "dfdc:clean"], ["DFDC, strong blur", "dfdc:GB_5"], ["DFDC, heavy compression", "dfdc:VC_5"]] as const).map(([n, k]) => [
+                n, <span>{p0(sc[k].raw.false_alarm)} → <Up a={p0(sc[k].raw.false_alarm)} b={p0(sc[k].cal.false_alarm)} lowerBetter /></span>,
+                <span>{pc(sc[k].raw.bacc)} → <b>{pc(sc[k].cal.bacc)}</b></span>])}
+              note={<>Same recipe as for DFD-FCG: a ridge read-out on GenD's class token predicts the fake evidence each kind of damage adds (target
+                from real fit videos only, so it never learns real vs fake), fitted on the same 49 FF++ training videos at damage levels 2 and 4,
+                tested at level 5 on test videos.</>} />
+          </div>
+        </>
+      )}
+
+      <Card className={`mt-6 ${d.deploy ? "border-green-200 bg-real-soft" : "border-amber-200 bg-amber-50"}`}>
+        <div className={`font-bold ${d.deploy ? "text-real" : "text-amber-800"}`}>
+          {d.deploy ? "Decision: the combined detectors now run on the website"
+            : d.live === "deployed" ? "Decision: my rule was not met; the website uses the combined system anyway, and I say so"
+              : "Decision: the rule was not met"}
+        </div>
+        <p className="mt-1 text-sm text-slate-700">
+          Rule written down before testing (results/ensemble/PLAN.md): switch only if newer sets gain at least 5 points and FF++ and DFDC each lose at
+          most 2. Measured: newer sets {ptsS(d.gain_new_sets)}, FF++ {ptsS(d.change_ffpp)}, DFDC {ptsS(d.change_dfdc)} points.
+          The combination itself was picked by 5-fold cross-validation on validation videos ({pc(fin.cv_val_bacc)}), not by test results.
+          {d.live === "deployed" && !d.deploy && <> {d.live_reason}</>}
+        </p>
+      </Card>
+      <Say>I found that the decision collapse under blur is not one model's bug: a 2026 detector, GenD, shows it too, and my self-calibration fixes
+        it there without changes. The final checker combines {nets.length} detectors and gives one firm answer. On newer fakes it never saw,
+        balanced accuracy rose from {pc(base.mean_new_bacc)} to {pc(fin.mean_new_bacc)}. The price is on 2019 FF++ videos: {ptsS(d.change_ffpp)} points,
+        so by my own rule it is a trade-off, not a free win.</Say>
+    </Section>
+  );
+}
+
 function Live() {
   const f = UP.groups.ffpp, d = UP.groups.dfdc, s = UP.sure, st = UP.settings, tf = UP.two_face_summary;
   const ci = UP.significance.ffpp?.ci95;
   return (
     <Section id="live" n="The live checker" title="A public website, tested on the paper's own videos"
-      lead={<>Upload a face video, get REAL / FAKE / NOT SURE with a short reason. Faces are found on the server's CPU; the detector runs on a
-        free Hugging Face GPU, or on the CPU when the free GPU time is used up (same answer, slower).</>}>
+      lead={<>Upload a face video, get a firm REAL or FAKE with a confidence number and a short reason. (Version 2, below, still said NOT SURE near
+        the line; the final system in “Final system” replaced that.) Faces are found on the server's CPU; the detectors run on a free Hugging Face GPU,
+        or on the CPU when the free GPU time is used up (same answer, slower).</>}>
       <Fig caption="CPU / GPU tags show where each step runs."><SystemFig /></Fig>
       <h3 className="mt-8 text-xl font-bold text-slate-900">Version 2: reads more, checks everyone, says when it is not sure</h3>
       <p className="mt-1 max-w-3xl text-sm text-slate-600">Version 1 used the research layout (2 clips, one face) and gave the research verdict on {pc(WC.ffpp.clean.same_verdict)} of
@@ -547,6 +691,25 @@ const NEW: [string, ReactNode, string, ReactNode][] = [
   ["A public checker, tested on the paper's videos", <>Website code run on all {UP.videos} test videos; settings chosen on {UP.select.used} other videos.</>,
     "Anyone can make a website.",
     "The website is not the novelty. It is the proof that the method works end to end, with numbers measured on the paper's test set."],
+  ...(EN.selfcal && Object.keys(EN.selfcal).length ? (() => {
+    const s = EN.selfcal[Object.keys(EN.selfcal)[0]];
+    return [
+      ["The collapse is general, not one model's bug" as string,
+        <>GenD (WACV 2026), a different detector, calls {p0(s["ffpp:GB_5"].raw.false_alarm)} of real FF++ videos FAKE under strong blur.</> as ReactNode,
+        "Maybe only DFD-FCG is fragile.",
+        "I measured a second state-of-the-art detector with the same damage code and the same test videos. It collapses even more. So reporting AUROC alone hides this for the field, not just for one paper."],
+      ["Self-calibration transfers unchanged",
+        <>Same recipe, same 49 fit videos, no retraining: GenD's false alarms under strong blur {p0(s["ffpp:GB_5"].raw.false_alarm)} → {p0(s["ffpp:GB_5"].cal.false_alarm)}.</>,
+        "Your fix is tailored to DFD-FCG.",
+        "It needs only a detector's own feature vector and its score. I applied it to GenD's class token with no change to the method."],
+    ] as [string, ReactNode, string, ReactNode][];
+  })() : []),
+  ["One firm answer from several detectors, chosen without peeking",
+    <>Newer test sets {pc(EN.options.dfd.mean_new_bacc)} → {pc(EN.options[EN.chosen].mean_new_bacc)}; FF++ {pc(EN.options.dfd.ffpp.bacc)} → {pc(EN.options[EN.chosen].ffpp.bacc)} (balanced accuracy).</>,
+    "Ensembles always help; you tuned on the test set.",
+    <>The combiner is fitted on validation videos only, the combination was picked by cross-validation on them, and the switch rule was written before testing.
+      Bootstrap 95% range of the gain on newer sets: {rangeS(EN.ci95.new_sets)} points. It is not free: FF++ lost {ptsS(-EN.decision.change_ffpp).replace("+", "")} points,
+      so my own rule was not met, and I report that.</>],
 ];
 
 function Novelty() {
@@ -615,7 +778,22 @@ const QA: [string, ReactNode][] = [
   ["What did you build yourself?",
     "The test pipeline around the authors' code, the exact attribution engine, the evaluation, the self-calibration and strict mode, the live checker (backend, website, CPU fallback, version 2 study) and this guide."],
   ["What would you do next?",
-    "Fine-tune the authors' side network on newer data (Celeb-DF, more DFDC, 2026 social-media and AI-generated videos), keeping the same test videos out, and fit the read-out on more kinds of damage."],
+    "Train the frame detector longer on more 2025–2026 data with a bigger GPU, add an audio-visual detector for lip-sync fakes, and fit the self-calibration on more kinds of damage (phone re-encoding, screen recording)."],
+  ["Why did you remove “not sure”?",
+    <>Users need a decision. With several detectors the confidence number carries the doubt instead: on held-out videos, answers with over 80% confidence were
+      right {pc(CK.bands[2]?.acc)} of the time, answers under 65% only {pc(CK.bands[0]?.acc)}. The page shows that number with every answer.</>],
+  ["Isn't the ensemble just more compute?",
+    "It adds one more DFD-FCG pass and 24 GenD frames per face, a few seconds on the GPU. The gain comes from different views of the same face: 3-second clips vs single frames, and old vs new training data. Combining the released and the retrained DFD-FCG alone gained less than adding the frame detector."],
+  ["How do you know you did not overfit to the test sets?",
+    <>No test video was used for training, checkpoint choice, fitting the combiner or picking the combination. All of that used {EN.n_val} validation videos.
+      The rules were written down first (results/ensemble/PLAN.md), and every option's test numbers are reported, not just the best.</>],
+  ["Why is the final system worse on FF++?",
+    <>On clean FF++ real videos it raises {p0(EN.options[EN.chosen]["ffpp:clean"]?.false_alarm)} false alarms, against {p0(EN.options.dfd["ffpp:clean"]?.false_alarm)} for the
+      released DFD-FCG, which was trained on exactly those videos. The retrained frame detector learned 2025–26 data, whose real videos look different
+      from 2019 news clips. It is a trade-off I measured and report: {ptsS(EN.decision.gain_new_sets)} points on newer fakes, {ptsS(EN.decision.change_ffpp)} on FF++.</>],
+  ["Where does it still fail?",
+    <>DFDC ({pc(EN.options[EN.chosen].dfdc.bacc)} balanced accuracy over the 3 options), a dataset it never trained on, and heavily damaged video in general:
+      once blur removes the fine detail, no detector here can see it. Fully AI-generated people are caught only {pc(EN.options[EN.chosen].sf?.caught)} of the time.</>],
 ];
 
 function Questions() {
@@ -642,7 +820,8 @@ function Script() {
     "An exact split of the score showed why: the model uses fine natural detail as proof of “real”. A 2-pixel blur adds +1.44 fake evidence to real faces and almost nothing to fakes.",
     "So I added one linear read-out that estimates, from the model's own features, how much fake evidence came only from poor quality, and subtracts it. No retraining.",
     "False alarms on damaged video drop from 22.5% to 8.7%, also for damage it never saw, and mixed-quality AUROC rises from 0.920 to 0.951. The cost: fewer fakes caught at the default line.",
-    `I built a public checker and tested its code on all ${UP.videos} test videos. On videos unlike its training data the model is near a coin flip, so the checker says “not sure” there; when it says “sure” it is right ${pc(UP.sure.all.acc_sure)} of the time.`,
+    `I built a public checker and tested its code on all ${UP.videos} test videos. Retraining DFD-FCG alone on 2025–2026 fakes helped new videos but hurt old ones.`,
+    `So I added a second, frame-level detector from 2026, GenD. It collapses under blur too, and my self-calibration fixes it unchanged. A combiner fitted on validation videos gives one firm answer: on newer fakes balanced accuracy rose from ${pc(EN.options.dfd.mean_new_bacc)} to ${pc(EN.options[EN.chosen].mean_new_bacc)}.`,
   ];
   return (
     <Section id="script" n="Practise this" title="The one-minute script">

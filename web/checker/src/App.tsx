@@ -192,8 +192,8 @@ export default function App() {
               Is this video <span className="text-real">real</span> or a <span className="text-fake">deepfake</span>?
             </h1>
             <p className="mt-3 text-base text-slate-600">
-              Upload a short video of a face. In about a minute you get the answer, a simple reason, and an honest
-              “not sure” when the checker can't tell.
+              Upload a short video of a face. In about a minute you get a clear answer, real or fake, with how confident
+              the checker is and a simple reason.
             </p>
             <ul className="mt-5 space-y-1.5 text-sm text-slate-600">
               <li className="flex gap-2"><Check /> Spots face swaps and changed facial expressions</li>
@@ -396,32 +396,40 @@ function ServerBadge({ h }: { h: Health | undefined }) {
 }
 
 const REGION_WORDS: Record<string, string> = { eyes: "the eyes", nose: "the nose", lips: "the mouth", skin: "the skin and cheeks" };
+const MEMBER_NAMES: Record<string, string> = {
+  dfd: "DFD-FCG (CVPR 2025), quality-checked",
+  dfdft: "DFD-FCG retrained on 2025–2026 fakes",
+  pe: "GenD frame detector (WACV 2026)", pe_sc: "GenD frame detector, quality-checked",
+  pe_ft: "GenD retrained on 2025–2026 fakes", pe_ft_sc: "GenD retrained, quality-checked",
+  clip: "GenD-CLIP frame detector (WACV 2026)", clip_sc: "GenD-CLIP, quality-checked",
+  clip_ft: "GenD-CLIP retrained on 2025–2026 fakes", clip_ft_sc: "GenD-CLIP retrained, quality-checked",
+};
 
 function ResultView({ r, preview, refEl, onAgain }: { r: Result; preview: string; refEl: React.RefObject<HTMLDivElement | null>; onAgain: () => void }) {
   const fake = r.verdict === "FAKE";
   const sorted = Object.entries(r.regions).sort((a, b) => b[1] - a[1]);
   const topFake = sorted[0];
   const topReal = sorted[sorted.length - 1];
-  const changed = r.verdict !== r.verdict_original;
   const qualityPts = Math.round(r.quality_shift * 100);
   const blur = r.blur_response[2];
   const blurLike = blur > 0.25 ? "real" : blur < -0.25 ? "fake" : "unclear";
-  const sure = r.sure ?? true;
+  const conf = r.confidence ?? Math.max(r.p, 1 - r.p);
   const nFaces = r.meta.faces_checked ?? 1;
   const shown = r.meta.face_shown ?? 1;
-  const tone = !sure ? "ring-amber-200" : fake ? "ring-red-200" : "ring-green-200";
-  const bg = !sure ? "bg-amber-50" : fake ? "bg-fake-soft" : "bg-real-soft";
+  const tone = fake ? "ring-red-200" : "ring-green-200";
+  const bg = fake ? "bg-fake-soft" : "bg-real-soft";
+  const strength = conf >= 0.9 ? "very strong" : conf >= 0.75 ? "strong" : conf >= 0.6 ? "clear" : "slight";
+  const band = ACC.bands?.find((b) => conf >= b.lo && conf < b.hi);
   return (
     <section ref={refEl} className="mt-8 scroll-mt-20 space-y-6">
       <div className={`card overflow-hidden ring-2 ${tone}`}>
         <div className={`grid items-center justify-items-center gap-5 p-5 text-center sm:justify-items-start sm:text-left md:grid-cols-[auto_1fr_auto] md:gap-6 md:p-8 ${bg}`}>
-          <Gauge p={r.p} verdict={r.verdict} unsure={!sure} />
+          <Gauge p={r.p} verdict={r.verdict} />
           <div>
             <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start sm:gap-3">
               <span className="label">Result</span>
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold
-                ${sure ? "bg-white text-slate-700" : "bg-amber-100 text-amber-800"}`}>
-                <SureIcon sure={sure} className="h-4 w-4" />{sure ? "Sure" : "Not sure"}
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                <SureIcon sure className="h-4 w-4" />{Math.round(conf * 100)}% confidence
               </span>
               {r.meta.degrade !== "none" && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
@@ -430,17 +438,14 @@ function ResultView({ r, preview, refEl, onAgain }: { r: Result; preview: string
                 </span>
               )}
             </div>
-            <h2 className={`mt-1 text-2xl font-extrabold sm:text-3xl ${!sure ? "text-amber-700" : fake ? "text-fake" : "text-real"}`}>
-              {sure ? (fake ? "This looks like a deepfake" : "This looks like a real video")
-                : `The checker can't tell. It leans ${fake ? "fake" : "real"}`}
+            <h2 className={`mt-1 text-2xl font-extrabold sm:text-3xl ${fake ? "text-fake" : "text-real"}`}>
+              {fake ? "FAKE: this video is a deepfake" : "REAL: this video is authentic"}
             </h2>
             <p className="mt-2 text-slate-600">
-              {sure ? (fake ? "The face shows signs of manipulation that the detector has learned from known deepfakes."
-                : "The face and its movement look like an authentic recording.")
-                : <>The score is {Math.round(r.p * 100)}% fake, close to the 50% line. On our test videos, about
-                  {" "}{Math.round((1 - ACC.unsure_acc) * 10)} in 10 answers like this were wrong. <b className="font-semibold text-slate-800">Don't rely on
-                  this answer</b>; check the video another way. New kinds of fakes, phone videos and faces unlike the detector's
-                  training videos often end up here.</>}
+              {fake ? "The face shows signs of manipulation that the detectors learned from known deepfakes"
+                : "The face and its movement match an authentic recording"}
+              {" "}({strength} evidence{r.detectors && r.detectors.length > 1 ? `, ${new Set(r.detectors.map((d) => d.split(",")[0])).size} detectors combined` : ""}).
+              {band && <> On our test videos, answers with this confidence were right <b className="font-semibold text-slate-800">{pct(band.acc)}</b> of the time.</>}
             </p>
           </div>
           {preview && <video src={preview} className="hidden h-32 rounded-xl md:block" muted autoPlay loop playsInline />}
@@ -485,19 +490,40 @@ function ResultView({ r, preview, refEl, onAgain }: { r: Result; preview: string
           </Explain>
           <Explain n={3} title="Fair to low-quality videos" icon="quality">
             <div className="mt-3 space-y-1">
-              <div className="text-xs text-slate-500">Original detector</div>
+              <div className="text-xs text-slate-500">DFD-FCG, original</div>
               <ScoreBar p={r.p_original} label="original" muted />
-              <div className="text-xs text-slate-500">After our quality check</div>
-              <ScoreBar p={r.p} label="corrected" />
+              <div className="text-xs text-slate-500">DFD-FCG after our quality check</div>
+              <ScoreBar p={r.p_dfd ?? r.p} label="corrected" />
             </div>
             <p className="mt-2 text-sm text-slate-500">
               Blur and compression can make a real face look fake to the original detector. We estimate that effect from
               the detector's own features and remove it
               {Math.abs(qualityPts) >= 1 ? ` (${qualityPts > 0 ? "−" : "+"}${Math.abs(qualityPts)} points here)` : " (it was negligible here)"}.
-              {changed && <b className="text-slate-700"> This changed the answer from {r.verdict_original} to {r.verdict}.</b>}
             </p>
           </Explain>
         </div>
+
+        {r.members && Object.keys(r.members).length > 1 && (
+          <div className="mt-8 rounded-2xl bg-slate-50 p-5">
+            <div className="flex items-center gap-2 font-semibold text-slate-900"><StepIcon step="model" className="h-5 w-5 text-brand" /> The detectors and the final answer</div>
+            <div className="mt-3 grid gap-x-6 gap-y-1 md:grid-cols-2">
+              {Object.entries(r.members).map(([k, v]) => (
+                <div key={k}>
+                  <div className="text-xs text-slate-500">{MEMBER_NAMES[k] ?? k}</div>
+                  <ScoreBar p={v} label={k} muted />
+                </div>
+              ))}
+              <div>
+                <div className="text-xs font-semibold text-slate-700">Final answer (combined)</div>
+                <ScoreBar p={r.p} label="final" />
+              </div>
+            </div>
+            <p className="mt-2 text-sm text-slate-500">
+              Each detector looks at the same faces in its own way. A combiner, trained on separate videos, weighs them into one answer.
+              {r.verdict !== r.verdict_original && <b className="text-slate-700"> The original DFD-FCG alone would have said {r.verdict_original}.</b>}
+            </p>
+          </div>
+        )}
 
         <div className="mt-8 grid gap-6 rounded-2xl bg-slate-50 p-5 md:grid-cols-[auto_1fr] md:items-center">
           <FaceRegions regions={r.regions} />
@@ -544,9 +570,9 @@ function Explain({ n, title, icon, children }: { n: number; title: string; icon:
 function HowItWorks() {
   const items = [
     { icon: "face", title: "1. Find the faces", text: "We track every clear face and line it up frame by frame." },
-    { icon: "model", title: "2. Look for manipulation", text: "A state-of-the-art detector (DFD-FCG) studies 8 short clips of each face from the first 10 seconds." },
-    { icon: "quality", title: "3. Correct for quality", text: "Blur and compression fool the original detector. Our add-on measures that effect and removes it." },
-    { icon: "blur", title: "4. Know when unsure", text: "If the score is close to the line, the checker says it is not sure instead of guessing." },
+    { icon: "model", title: "2. Look for manipulation", text: "Three detectors study the same faces: DFD-FCG (CVPR 2025) reads 8 short clips; GenD (WACV 2026) reads single frames, once as released and once retrained on 2025–2026 fakes." },
+    { icon: "quality", title: "3. Correct for quality", text: "Blur and compression fool detectors. Our add-on measures that effect from each detector's own features and removes it." },
+    { icon: "blur", title: "4. One firm answer", text: "A combiner trained on separate videos weighs the detectors and gives one answer, REAL or FAKE, with its confidence." },
   ];
   return (
     <section id="how" className="mt-16 scroll-mt-20">
@@ -566,19 +592,20 @@ function HowItWorks() {
 
 const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
 
-/** Honest accuracy, from the 225-video test (numbers read from accuracy.json, made by service/study/checker_numbers.py). */
+/** Honest accuracy on held-out test videos (numbers read from accuracy.json, made by service/ens/checker_numbers.py). */
 function Accuracy() {
   const a = ACC;
   const tiles: [string, string, string, string][] = [
-    [pct(a.ffpp_clean_acc), "right on normal test videos", "FaceForensics++, the dataset the detector was made for", "text-real"],
-    [pct(a.ffpp_blur_acc), "right on strongly blurred videos", `the original detector gets ${pct(a.ffpp_blur_acc_original)}`, "text-brand"],
-    [pct(a.sure_acc), "right when it says “sure”", `when it says “not sure”: ${pct(a.unsure_acc)}`, "text-slate-900"],
+    [pct(a.new_bacc), "right on newer fakes (2025–2026)", `${a.new_videos} test videos it never saw · the original detector: ${pct(a.new_bacc_original)}`, "text-brand"],
+    [pct(a.overall_acc), "right on all test videos, as uploaded", `${a.overall_videos} videos, old and new datasets · the original detector: ${pct(a.overall_acc_original)}`, "text-real"],
+    [pct(a.ffpp_clean_acc), "right on FaceForensics++", "the 2019 dataset the original detector was made for", "text-slate-900"],
   ];
   return (
     <section id="accuracy" className="mt-16 scroll-mt-20">
       <h2 className="text-2xl font-bold text-slate-900">How accurate is it?</h2>
       <p className="mt-2 max-w-3xl text-sm text-slate-600">
-        Tested on {a.videos} research test videos that the checker had never seen, each also blurred and compressed.
+        Tested on {a.new_videos + a.videos} videos the checker had never seen: {a.new_videos} from six newer datasets and the {a.videos} research test
+        videos, each also blurred and compressed. Accuracy here is balanced: real and fake videos count equally.
       </p>
       <div className="mt-5 grid gap-4 md:grid-cols-3">
         {tiles.map(([big, what, note, cls]) => (
@@ -589,19 +616,34 @@ function Accuracy() {
           </div>
         ))}
       </div>
+      {a.bands && (
+        <div className="card mt-4 p-5">
+          <div className="text-sm font-semibold text-slate-900">How much to trust the confidence number</div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            {a.bands.map((b) => (
+              <div key={b.lo} className="rounded-xl bg-slate-50 p-3">
+                <div className="text-xs text-slate-500">confidence {Math.round(b.lo * 100)}–{Math.min(100, Math.round(b.hi * 100))}%</div>
+                <div className="text-xl font-bold text-slate-900">{pct(b.acc)} right</div>
+                <div className="text-xs text-slate-500">{pct(b.share)} of answers</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <p className="mt-3 text-xs text-slate-600">
-        It is weaker on videos unlike its training data: {pct(a.dfdc_clean_acc)} on DFDC, a different dataset. That is why it says
-        “not sure” instead of guessing.
+        No detector is perfect. It is weakest on videos unlike anything it was trained on, for example DFDC ({pct(a.dfdc_acc)} here),
+        and on strongly blurred or compressed copies ({pct(a.ffpp_blur_acc)} on blurred FaceForensics++). A low confidence number means the
+        answer is a close call.
       </p>
     </section>
   );
 }
 
 const FAQ: [string, string][] = [
-  ["Is the answer proof?", "No. It is a strong hint from a research detector, not proof. Never use it alone to accuse someone or as legal evidence."],
-  ["What does “not sure” mean?", "The score is close to the line between real and fake. In our tests such answers were wrong far more often, so check the video another way too."],
+  ["Is the answer proof?", "No. It is a strong hint from research detectors, not proof. Never use it alone to accuse someone or as legal evidence."],
+  ["What does the confidence number mean?", "How far the combined score is from the line between real and fake. Higher means the detectors agree more strongly. The table under “How accurate is it?” shows how often answers at each confidence level were right on our test videos."],
   ["Which videos work best?", "At least 4 seconds, one or two clear faces looking roughly at the camera, good light. Only the first 10 seconds are checked."],
-  ["What can fool it?", "It was trained on face swaps and changed expressions in talking-head videos. It can miss videos made entirely by AI (for example Sora or Veo), lip-sync fakes, newer face-swap apps, faces turned away or covered, and crowds (it checks at most two people)."],
+  ["What can fool it?", "It was trained on face swaps, changed expressions, animated talking heads and some fully AI-generated people. It can still miss brand-new generators, lip-sync-only fakes, faces turned away or covered, and crowds (it checks at most two people)."],
   ["Why does it take about a minute?", "It finds every face and checks 8 short clips of each. If the free GPU is busy or used up, it runs on a slower CPU instead."],
   ["What happens to my video?", "It is sent to the checker, used for this one check and deleted right after. We keep only anonymous numbers, never the video."],
 ];

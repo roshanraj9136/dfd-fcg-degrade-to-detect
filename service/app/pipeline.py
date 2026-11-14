@@ -15,7 +15,9 @@ are in no reported result, see results/accuracy_study.md):
   MAX_FACES=2              every large face that is in the video most of the time is checked; the most
                            suspicious one decides the verdict (a swap may be on either person)
   FLIP_TTA=0               1 = also check each clip mirrored and average (tested: it did not help, worse on blur)
-  CERT_MARGIN=0.16         the answer is "sure" when the corrected score is at least 16 points from the 0.5 line
+  CERT_MARGIN=0            the answer is always a firm REAL or FAKE (with its confidence); a value > 0 brings back the
+                           version-2 "not sure" label for scores within that distance of the 0.5 line
+  DFD_FUSION_JSON          second detector (GenD) + fusion weights (fusion.json next to this file; absent = DFD-FCG only)
 
 Speed-up for CPU hosting: the face detector runs on every 12th frame and the landmarks on every
 3rd frame (plus every frame the model uses); the landmark smoothing then averages the available
@@ -49,7 +51,7 @@ CLIPS = int(os.environ.get("CLIPS", "8"))
 WINDOW_SEC = float(os.environ.get("WINDOW_SEC", "10"))
 MAX_FACES = int(os.environ.get("MAX_FACES", "2"))
 FLIP_TTA = os.environ.get("FLIP_TTA", "0") == "1"
-CERT_MARGIN = float(os.environ.get("CERT_MARGIN", "0.16"))   # "sure" limits (see certainty())
+CERT_MARGIN = float(os.environ.get("CERT_MARGIN", "0"))      # 0 = always a firm REAL / FAKE answer (see certainty())
 CERT_AGREE = float(os.environ.get("CERT_AGREE", "0"))
 MAX_WINDOW_FRAMES = 360          # memory cap (high-fps videos): 6 s at 60 fps
 DET_RES = 800
@@ -144,6 +146,14 @@ class Analyzer:
         self.mu, self.sd = np.array(sc["mean"]), np.array(sc["scale"])
         self.W, self.b = np.array(sc["coef"]), np.array(sc["intercept"])
         self.lam = float(m["strict_lam"])
+        # more detectors + fusion (round 2): extra DFD-FCG checkpoints and GenD on the same aligned face crops, combined
+        # by a logistic regression fitted on validation videos only (fusion.json; absent = DFD-FCG alone, as before)
+        from gend_live import FUSION_JSON, load_fusion, make_member
+        fj = Path(FUSION_JSON) if os.path.isabs(FUSION_JSON) else Path(__file__).resolve().parent / FUSION_JSON
+        self.fusion = load_fusion(fj)
+        shared = {}
+        self.extra = {n: make_member(self.fusion["detectors"][n], device, shared)
+                      for n in (self.fusion or {}).get("members", []) if n != "dfd"}
 
     def cpu_twin(self):
         """Same analyser with its own CPU copy of DFD-FCG (shares the face models and the read-out).
@@ -152,6 +162,16 @@ class Analyzer:
         twin.device, twin.fp16 = "cpu", False
         twin.model = load_model(device="cpu")
         twin.rec = Recorder(twin.model)
+        twin.extra, done_models = {}, {}
+        for n, m in self.extra.items():                  # members sharing a network keep sharing it on the CPU
+            key = id(m.model)
+            if key not in done_models:
+                done_models[key] = m.twin("cpu")
+                twin.extra[n] = done_models[key]
+            else:
+                t = copy.copy(done_models[key])
+                t.cfg, t.sc = m.cfg, getattr(m, "sc", None)
+                twin.extra[n] = t
         return twin
 
     # ------------------------------------------------------------------ face
@@ -419,6 +439,14 @@ class Analyzer:
                     x = probes.apply("pB2", np.ascontiguousarray(x))
                 fo[view + ("_probe" if is_probe else "")] = forward(x, "blur" if is_probe else "model",
                                                                     full=view == "base" and not is_probe)
+            if self.extra:                                  # the other detectors of the fusion, same face crops
+                progress("model", done[0] / total)
+                cache = {}                                  # one forward pass per network
+                fo["extra"] = {}
+                for n, m in self.extra.items():
+                    if id(m.model) not in cache:
+                        cache[id(m.model)] = m.frame_scores(fc, clip_idx)
+                    fo["extra"][n] = cache[id(m.model)]
             result.append(fo)
         return result, round(time.time() - t, 2)
 
@@ -446,8 +474,18 @@ class Analyzer:
             R.append(r0)
         d, g, r = np.concatenate(D), np.concatenate(G), np.concatenate(R)
         per = np.array([np.mean([sig(v) for v in row]) for row in d - g]).reshape(len(D), -1)
-        return dict(p_original=self.prob(d), p=self.prob(d - g), p_strict=self.prob(d - g - self.lam * r),
-                    d=d0, g=g0, r=r0, clip_p=per.mean(0), view_p=per)
+        out = dict(p_original=self.prob(d), p=self.prob(d - g), p_strict=self.prob(d - g - self.lam * r),
+                   d=d0, g=g0, r=r0, clip_p=per.mean(0), view_p=per)
+        out["p_dfd"] = out["p"]
+        if self.fusion and "extra" in fo:
+            pd = min(max(out["p_dfd"], 1e-6), 1 - 1e-6)
+            x = {"dfd": math.log(pd / (1 - pd))}
+            for n, raw in fo["extra"].items():
+                x[n] = self.extra[n].video_logit(*raw)
+            z = float(np.dot(self.fusion["coef"], [x[k] for k in self.fusion["members"]]) + self.fusion["intercept"])
+            out["members"] = {k: sig(v) for k, v in x.items()}
+            out["p"] = sig(z)
+        return out
 
     def finish(self, st, outs, model_seconds=None):
         """CPU part: self-calibration, strict mode, the most suspicious face, explanation."""
@@ -472,11 +510,16 @@ class Analyzer:
         return dict(
             verdict="FAKE" if p_cal >= 0.5 else "REAL",
             p=p_cal, p_original=p_orig, p_strict=p_strict, **sure,
+            p_dfd=sc["p_dfd"], members=sc.get("members"),
+            confidence=max(p_cal, 1 - p_cal),
+            detectors=(list(dict.fromkeys(self.fusion["names"].get(n, n).split(",")[0] for n in self.fusion["members"]))
+                       if self.fusion else ["DFD-FCG"]),
             verdict_original="FAKE" if p_orig >= 0.5 else "REAL",
-            quality_shift=p_orig - p_cal, spurious_logit=sc["g"].mean(0).tolist(),
+            quality_shift=p_orig - sc["p_dfd"], spurious_logit=sc["g"].mean(0).tolist(),
             blur_response=sc["r"].mean(0).tolist(), heads=sc["d"].mean(0).tolist(),
             regions=region_ev, parts=dict(zip(FACE_PARTS, np.mean([x["cs_lq"].sum(0) for x in base], 0).tolist())),
-            faces=[dict(p=s["p"], p_original=s["p_original"], p_strict=s["p_strict"]) for s in scores],
+            faces=[dict(p=s["p"], p_original=s["p_original"], p_strict=s["p_strict"], p_dfd=s["p_dfd"],
+                        members=s.get("members")) for s in scores],
             timeline=timeline,
             face_png=png64(cv2.resize(face, (300, 300), interpolation=cv2.INTER_CUBIC)),
             heat_png=png64(heat_overlay(face, sp)),
@@ -488,9 +531,8 @@ class Analyzer:
 
 
 def certainty(p, view_p, margin=None, agree=None):
-    """Is the answer sure? The corrected score must be at least CERT_MARGIN away from the 0.5 line. (CERT_AGREE can
-    also require that this share of the clip checks is on the verdict's side; on the selection videos it added
-    nothing, so it is off.) Chosen on separate videos, not on any reported test video: results/accuracy_study.md."""
+    """Clip agreement and distance from the 0.5 line. The verdict is always REAL or FAKE (no "not sure" answer);
+    `sure` is kept for old clients and is always True. CERT_MARGIN > 0 restores the old "not sure" rule."""
     margin = CERT_MARGIN if margin is None else margin
     agree = CERT_AGREE if agree is None else agree
     v = np.asarray(view_p).ravel()

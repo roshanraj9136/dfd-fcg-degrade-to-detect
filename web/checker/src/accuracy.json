@@ -1,11 +1,37 @@
 {
  "videos": 225,
- "ffpp_clean_acc": 0.9846,
- "ffpp_blur_acc": 0.8,
- "ffpp_blur_acc_original": 0.6615,
- "dfdc_clean_acc": 0.725,
- "sure_acc": 0.9366,
- "sure_acc_ffpp": 0.9829,
- "unsure_acc": 0.6532,
- "sure_share": 0.3037
+ "new_videos": 480,
+ "new_bacc": 0.8501510472610097,
+ "new_bacc_original": 0.6217832527747942,
+ "ffpp_clean_acc": 0.9,
+ "ffpp_blur_acc": 0.7307692307692307,
+ "ffpp_blur_acc_original": 0.7846153846153846,
+ "dfdc_acc": 0.6875,
+ "overall_acc": 0.851063829787234,
+ "overall_acc_original": 0.6312056737588653,
+ "overall_videos": 705,
+ "bands": [
+  {
+   "lo": 0.5,
+   "hi": 0.65,
+   "acc": 0.5813953488372093,
+   "share": 0.12198581560283688,
+   "n": 86
+  },
+  {
+   "lo": 0.65,
+   "hi": 0.8,
+   "acc": 0.7642276422764228,
+   "share": 0.17446808510638298,
+   "n": 123
+  },
+  {
+   "lo": 0.8,
+   "hi": 1.01,
+   "acc": 0.9193548387096774,
+   "share": 0.7035460992907802,
+   "n": 496
+  }
+ ],
+ "option": "dfd+pe_ft+pe_ft_sc+pe+pe_sc"
 }
