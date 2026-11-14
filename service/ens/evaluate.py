@@ -30,13 +30,18 @@ def _valdmg(n):
     f = Dt.cache_file(f"valdmg_{base.replace('_ft', 'ft')}.npz")
     if not f.exists():
         return {}
-    z = np.load(f)
-    if "p" in z.files:
-        return {tuple(str(k).split("|")[:2]) + (0,): float(Dt.logit(p)) for k, p in zip(z["keys"], z["p"])}
+    with np.load(f) as z:
+        keys = z["keys"]
+        if "p" in z.files:
+            return {tuple(str(k).split("|")[:2]) + (0,): float(Dt.logit(p)) for k, p in zip(keys, z["p"])}
+        # NPZ indexing reads the entire array each time. Materialize once rather
+        # than rereading all frame features for every validation video.
+        starts, logits, features = z["start"], z["logit"], z["feats"]
     cal = Dt.GenDSelfCal(base.replace("_ft", "ft")) if n.endswith("_sc") else None
     out = {}
-    for i, k in enumerate(z["keys"]):
-        lg, ft = z["logit"][z["start"][i]:z["start"][i + 1]], z["feats"][z["start"][i]:z["start"][i + 1]]
+    for i, k in enumerate(keys):
+        sl = slice(starts[i], starts[i + 1])
+        lg, ft = logits[sl], features[sl]
         out[tuple(str(k).split("|")[:2]) + (0,)] = Dt.video_score(cal.correct(lg, ft) if cal else lg)
     return out
 
