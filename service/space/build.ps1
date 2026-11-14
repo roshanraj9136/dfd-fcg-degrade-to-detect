@@ -13,4 +13,11 @@ foreach ($f in Get-ChildItem "$svc\app" -File | Where-Object { $_.Name -match '^
 foreach ($m in "__init__", "config", "conditions", "engine", "prep", "probes", "manifest", "quality") {
     Copy-Item "$root\qa\$m.py" "$Out\qa"
 }
+# Linux xargs preserves CR characters in packages.txt as part of package names.
+# Make artifacts independent of a Windows checkout's core.autocrlf setting.
+$spaceEncoding = New-Object System.Text.UTF8Encoding($false)
+foreach ($entry in Get-ChildItem -LiteralPath $Out -Recurse -File | Where-Object { $_.Extension -in '.py', '.txt', '.md', '.json' }) {
+    $textContent = [System.IO.File]::ReadAllText($entry.FullName).Replace("`r`n", "`n")
+    [System.IO.File]::WriteAllText($entry.FullName, $textContent, $spaceEncoding)
+}
 "space folder in $((Resolve-Path $Out).Path)"
