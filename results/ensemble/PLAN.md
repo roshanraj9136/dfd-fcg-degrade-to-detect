@@ -81,3 +81,40 @@ the switch rule).
 3. Selection among all members and fusions: the best 5-fold CV mean balanced accuracy on clean + blur + comp
    validation videos (folds by video, so a video's three versions stay in one fold).
 4. Same switch rule. Round-2 and round-2b test numbers are both reported.
+
+## Round 3 follow-up (14 Nov 2026, before evaluating GenD-CLIP test results)
+
+The validation-only FF++ reweighting protocol was recorded in `ROUND3_PLAN.md`.
+Its 15 options produced no qualifying candidate, so the live model is retained.
+
+Next evaluate the completed GenD-CLIP fine-tune (the existing `ft_clip/best.pt`,
+chosen by AUROC before this round). Score the same 24 frames, fit videos and
+clean/blur/compression validation protocol. No new network training is performed
+for this comparison. Add `clip_ft` and `clip_ft_sc` to the five live members.
+
+**Split ambiguity:** AGENTS reserves Counterfactual groups 25-36 from tuning,
+while the older manifests use groups 25-30 as validation. Until the owner resolves
+this, exclude all `synth` validation rows from this new selection/fitting. All
+DFDC remains excluded. Refit the baseline on this same restricted validation
+cohort for CV comparisons; compare against the exact deployed baseline at test.
+Prior use of groups 25-30 is disclosed, not erased by this exclusion.
+
+**Selection, validation only:**
+- Require all seven members to have every clean/blur/comp row of a video, and
+  compare every subset on that same complete cohort. Report coverage explicitly.
+- Evaluate every nonempty subset with the same source/class/condition weighting,
+  C=1 logistic regression, and five video-grouped folds (seed 0) as round 2b.
+- Advance only if CV macro balanced accuracy beats the five-member baseline by
+  at least 0.5 points, macro fake recall loses at most 1 point, and clean FF++
+  false alarms do not increase. Rank by macro balanced accuracy; ties rounded to
+  0.1 points favor fewer networks, then fewer scores.
+- Freeze the chosen coefficients and all CV results before computing test metrics.
+  Report every option, including failures; test metrics never change the choice.
+
+**Release rule versus the current live model:** mean balanced accuracy on the four
+newer two-class sets must increase, mean FF++ balanced accuracy must not decrease,
+and neither DFDC nor FaceShifter may lose more than 2 points. Neither fake-only set
+may lose more than 2 points of recall. Full model parity, both sample videos and
+the existing binary-answer UI checks must pass. If the rule fails, retain the
+current model and publish the tradeoff. This is a follow-up benchmark on previously
+reported tests, not a new blind holdout.

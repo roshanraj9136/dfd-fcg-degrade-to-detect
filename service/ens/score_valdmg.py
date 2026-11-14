@@ -4,7 +4,7 @@ can learn how each detector behaves on low-quality video (results/ensemble/PLAN.
   comp:  every 10-frame clip encoded with H.264 CRF 40 (qa.conditions._x264, 3 fps)
 Members: dfd (released DFD-FCG + live read-out), dfdft (round-1 checkpoint + its read-out), pe / peft (GenD-PE released /
 fine-tuned; 24 evenly spaced frames of the clips, as score_gend.py).
-    python service/ens/score_valdmg.py <dfd|dfdft|pe|peft> <out.npz>
+    python service/ens/score_valdmg.py <dfd|dfdft|pe|peft|clip|clipft> <out.npz>
 Output for dfd*: keys "vid|cond|0", p (self-calibrated P(fake)); for GenD: keys, start, feats, logit (as score_gend.py).
 """
 import csv
@@ -70,11 +70,19 @@ def rows():
     return out
 
 
-def main():
-    rs = rows()
-    if os.environ.get("LIMIT"):
-        rs = rs[:int(os.environ["LIMIT"])]
-    tmp = tempfile.mkdtemp(dir=r"D:\dfd-data\ens")
+def gend_settings(name):
+    if name not in ("pe", "peft", "clip", "clipft", "pe_pair"):
+        raise ValueError("member must be dfd, dfdft, pe, peft, clip or clipft")
+    kind = "clip" if name.startswith("clip") else "pe"
+    checkpoint = os.environ.get("GEND_LN")
+    if name == "pe_pair" and not checkpoint:
+        raise ValueError("pe_pair requires an explicit GEND_LN checkpoint")
+    if checkpoint is None and name.endswith("ft"):
+        checkpoint = str(Path(r"D:\dfd-data\ens") / f"ft_{kind}" / "best.pt")
+    return kind, checkpoint
+
+
+def score(rs, tmp):
     if NAME in ("dfd", "dfdft"):
         if NAME == "dfdft":
             os.environ["DFD_FCG_CKPT"] = r"D:\dfd-data\train_v1\best.ckpt"
@@ -112,9 +120,10 @@ def main():
         def pick(clip_idx, n):                       # same frames as score_gend.py
             u = np.unique(np.asarray(clip_idx).ravel())
             return u if len(u) <= n else u[np.linspace(0, len(u) - 1, n).round().astype(int)]
-        sc = Scorer("pe")
-        if NAME == "peft":
-            sd_ = torch.load(r"D:\dfd-data\ens\ft_pe\best.pt", map_location="cpu")
+        kind, checkpoint = gend_settings(NAME)
+        sc = Scorer(kind)
+        if checkpoint:
+            sd_ = torch.load(checkpoint, map_location="cpu", weights_only=True)
             own = sc.model.state_dict()
             sc.model.load_state_dict({**own, **{k: v.to(own[k].dtype) for k, v in sd_.items()}})
         keys, start, feats, logits, n = [], [], [], [], 0
@@ -141,6 +150,17 @@ def main():
         np.savez(OUT, keys=np.array(keys), start=np.array(start + [n]), feats=np.concatenate(feats),
                  logit=np.concatenate(logits))
     print("finished", len(rs), "videos", flush=True)
+
+
+def main():
+    if NAME not in ("dfd", "dfdft"):
+        gend_settings(NAME)
+    rs = rows()
+    if os.environ.get("LIMIT"):
+        rs = rs[:int(os.environ["LIMIT"])]
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="valdmg-", dir=OUT.parent) as tmp:
+        score(rs, tmp)
 
 
 if __name__ == "__main__":

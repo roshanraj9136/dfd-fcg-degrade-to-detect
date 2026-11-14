@@ -24,6 +24,7 @@ NAME, WHICH, OUT = sys.argv[1], sys.argv[2], Path(sys.argv[3])
 MAX_FRAMES = int(sys.argv[4]) if len(sys.argv) > 4 else 40
 CROPS, BUILDS = Path(r"D:\dfd-data\crops"), Path(r"D:\dfd-data\builds\test")
 SETS = [Path(r"D:\dfd-data\new\sets.csv"), Path(r"D:\dfd-data\new\sets_gated.csv")]
+SCORE_SPLITS = {s.strip() for s in os.environ.get("SCORE_SPLITS", "").split(",") if s.strip()}
 
 
 def pick(clip_idx, n=MAX_FRAMES):
@@ -38,6 +39,8 @@ def items():
         seen = set()
         for f in SETS:
             for r in csv.DictReader(open(f)):
+                if SCORE_SPLITS and r["set"] not in SCORE_SPLITS:
+                    continue
                 p = CROPS / (r["vid"].replace("/", "__") + ".npz")
                 if r["vid"] in seen or not p.exists():
                     continue
