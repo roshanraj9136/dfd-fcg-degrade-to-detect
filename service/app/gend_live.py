@@ -16,6 +16,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from reliability import (InvalidScores, finite_array, logit, mean_probability,
+                         readout_shift, validate_fusion, validate_readout)
+
 REPOS = {"clip": "yermandy/GenD_CLIP_L_14", "pe": "yermandy/GenD_PE_L"}
 NORM = {"clip": ((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))}
 
@@ -73,6 +76,8 @@ class GenDMember:
         from huggingface_hub import hf_hub_download
         from safetensors.torch import load_file
         self.cfg, self.device, self.frames = cfg, device, int(cfg.get("frames", 24))
+        if self.frames < 1:
+            raise InvalidScores("GenD requires at least one sampled frame")
         kind = cfg.get("backbone", "clip")
         m = GenDNet(kind)
         sd = load_file(hf_hub_download(REPOS[kind], "model.safetensors"))
@@ -85,7 +90,8 @@ class GenDMember:
         self.mean = torch.tensor(mean, device=device).view(1, 3, 1, 1)
         self.std = torch.tensor(std, device=device).view(1, 3, 1, 1)
         sc = cfg.get("selfcal")
-        self.sc = None if not sc else {k: np.asarray(sc[k], np.float64) for k in ("mean", "scale", "coef", "intercept")}
+        self.sc = None if sc is None else dict(zip(("mean", "scale", "coef", "intercept"),
+                                                   validate_readout(sc, outputs=1, features=1024)))
 
     def twin(self, device):
         """A copy of this member on another device (CPU fallback)."""
@@ -106,6 +112,8 @@ class GenDMember:
     def frame_scores(self, crops, clip_idx, bs=24):
         """crops: (N,150,150,3) uint8 RGB of one face. Returns frame logits (fake - real) and L2 class tokens."""
         fr = crops[self.pick(clip_idx)]
+        if len(fr) == 0:
+            raise InvalidScores("no frames available for GenD")
         lg, ft = [], []
         for k in range(0, len(fr), bs):
             x = torch.from_numpy(np.ascontiguousarray(fr[k:k + bs])).to(self.device).permute(0, 3, 1, 2).float() / 255
@@ -118,11 +126,14 @@ class GenDMember:
 
     def video_logit(self, frame_logits, feats):
         """Logit of the mean frame probability, after removing the self-calibration's spurious evidence."""
-        z = np.asarray(frame_logits, np.float64)
+        z = finite_array(frame_logits, "GenD frame logits", ndim=1)
+        f = finite_array(feats, "GenD features", ndim=2)
+        if f.shape != (len(z), 1024):
+            raise InvalidScores("GenD frame logits and features do not match")
         if self.sc is not None:
-            z = z - (((feats - self.sc["mean"]) / self.sc["scale"]) @ self.sc["coef"].T + self.sc["intercept"]).ravel()
-        p = float(np.clip(np.mean(1 / (1 + np.exp(-z))), 1e-6, 1 - 1e-6))
-        return float(np.log(p / (1 - p)))
+            z = z - readout_shift(f, self.sc["mean"], self.sc["scale"],
+                                  self.sc["coef"], self.sc["intercept"]).ravel()
+        return logit(mean_probability(z))
 
 
 def load_fusion(path):
@@ -131,8 +142,11 @@ def load_fusion(path):
     and GenD members (cfg type=gend)."""
     p = Path(path)
     if not p.exists():
+        if os.environ.get("DFD_FUSION_JSON"):
+            raise FileNotFoundError(f"configured fusion file does not exist: {p}")
         return None
-    return json.load(open(p))
+    with p.open(encoding="utf-8") as fh:
+        return validate_fusion(json.load(fh))
 
 
 class DfdMember:
@@ -154,7 +168,7 @@ class DfdMember:
             E.CKPT = old
         self.rec = E.Recorder(self.model)
         m = json.load(open(here / cfg["model_json"]))["selfcal"]
-        self.mu, self.sd, self.W, self.b = (np.asarray(m[k], np.float64) for k in ("mean", "scale", "coef", "intercept"))
+        self.mu, self.sd, self.W, self.b = validate_readout(m, outputs=3, features=1280)
         self.fp16 = device == "cuda"
 
     def twin(self, device):
@@ -188,9 +202,11 @@ class DfdMember:
         return np.array(D), np.array(Y)
 
     def video_logit(self, D, Y):
-        G = ((Y - self.mu) / self.sd) @ self.W.T + self.b
-        p = float(np.clip(np.mean(1 / (1 + np.exp(-(D - G)))), 1e-6, 1 - 1e-6))
-        return float(np.log(p / (1 - p)))
+        D = finite_array(D, "DFD head logits", ndim=2)
+        G = readout_shift(Y, self.mu, self.sd, self.W, self.b)
+        if D.shape != G.shape:
+            raise InvalidScores("DFD head logits and features do not match")
+        return logit(mean_probability(D - G))
 
 
 def make_member(cfg, device, shared=None):
@@ -204,8 +220,12 @@ def make_member(cfg, device, shared=None):
         import copy
         m = copy.copy(shared[key])
         m.cfg = cfg
+        m.frames = int(cfg.get("frames", 24))
+        if m.frames < 1:
+            raise InvalidScores("GenD requires at least one sampled frame")
         sc = cfg.get("selfcal")
-        m.sc = None if not sc else {k: np.asarray(sc[k], np.float64) for k in ("mean", "scale", "coef", "intercept")}
+        m.sc = None if sc is None else dict(zip(("mean", "scale", "coef", "intercept"),
+                                               validate_readout(sc, outputs=1, features=1024)))
         return m
     m = GenDMember(cfg, device)
     shared[key] = m

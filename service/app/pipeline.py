@@ -36,6 +36,9 @@ import cv2
 import numpy as np
 import torch
 
+from reliability import (InvalidScores, finite_array, fusion_logit, logit, mean_probability,
+                         probability, readout_shift, sigmoid, track_candidate, validate_readout)
+
 from qa import probes
 from qa.conditions import FRAME_FN, FULL_FRAME, _seed, _x264, _xvid_then_x264, shift_M
 from qa.config import (CROP_SIZE, DATA, MAX_FRAMES, NUM_FRAMES, PERTURB_PARAMS, SMOOTH_MARGIN, STRIDE_SEC,
@@ -63,7 +66,7 @@ LM_GROUPS = {"eyes": list(range(36, 48)) + list(range(17, 27)), "nose": list(ran
 
 
 def sig(x):
-    return 1.0 / (1.0 + math.exp(-x))
+    return float(sigmoid(x))
 
 
 class NoFace(Exception):
@@ -143,9 +146,8 @@ class Analyzer:
         self.rec = Recorder(self.model)
         m = json.load(open(MODEL_JSON))
         sc = m["selfcal"]
-        self.mu, self.sd = np.array(sc["mean"]), np.array(sc["scale"])
-        self.W, self.b = np.array(sc["coef"]), np.array(sc["intercept"])
-        self.lam = float(m["strict_lam"])
+        self.mu, self.sd, self.W, self.b = validate_readout(sc, outputs=3, features=1280)
+        self.lam = float(finite_array(m["strict_lam"], "strict weight", ndim=0))
         # more detectors + fusion (round 2): extra DFD-FCG checkpoints and GenD on the same aligned face crops, combined
         # by a logistic regression fitted on validation videos only (fusion.json; absent = DFD-FCG alone, as before)
         from gend_live import FUSION_JSON, load_fusion, make_member
@@ -171,6 +173,8 @@ class Analyzer:
             else:
                 t = copy.copy(done_models[key])
                 t.cfg, t.sc = m.cfg, getattr(m, "sc", None)
+                if hasattr(m, "frames"):
+                    t.frames = m.frames
                 twin.extra[n] = t
         return twin
 
@@ -180,7 +184,7 @@ class Analyzer:
         """First WINDOW_SEC seconds, downscaled to DET_RES for the face models (full frames are re-read later)."""
         cap = cv2.VideoCapture(str(path))
         fps = cap.get(cv2.CAP_PROP_FPS)
-        fps_int = int(round(fps)) if fps and fps > 1 else 30
+        fps_int = int(round(fps)) if math.isfinite(fps) and fps > 1 else 30
         limit = window_frames(fps_int, window_sec)
         small, s, hw = [], 1.0, None
         while len(small) < limit:
@@ -214,18 +218,17 @@ class Analyzer:
                 cand = free[i]
                 if not cand:
                     continue
-                if prev is None:
-                    j = int(np.argmax([(b[2] - b[0]) * (b[3] - b[1]) for b in cand]))
-                else:
-                    dist = [np.linalg.norm(_centre(b) - _centre(prev)) for b in cand]
-                    j = int(np.argmin(dist))
-                    if f > 0 and dist[j] > _width(prev):
-                        continue
+                j = track_candidate(cand, prev)
+                if j is None:
+                    continue
                 boxes[i] = cand.pop(j)
                 prev = boxes[i]
             if f == 0:
                 if len(boxes) < 0.6 * len(det_frames):
-                    raise NoFace("no clear face was found in most of the video")
+                    raise NoFace("no clear face could be followed through most of the video")
+                keys = np.array(sorted(boxes))
+                if any(np.abs(keys - int(x)).min() > DET_EVERY for x in needed):
+                    raise NoFace("the main face was lost in part of the clips")
             else:
                 if len(boxes) < SECOND_FACE_PRESENCE * len(det_frames):
                     continue
@@ -290,6 +293,8 @@ class Analyzer:
             sm = np.mean(win, axis=0)
             sm += lms[fi].mean(axis=0) - sm.mean(axis=0)
             M = cv2.estimateAffinePartial2D(np.vstack([sm[x] for x in STABLE_POINTS]), ref, method=cv2.LMEDS)[0]
+            if M is None or not np.isfinite(M).all():
+                raise NoFace("the face could not be aligned reliably")
             tl = sm @ M[:, :2].T + M[:, 2]
             size = CROP_SIZE // 2
             cx, cy = np.mean(tl[15:68], axis=0)
@@ -444,22 +449,25 @@ class Analyzer:
                 cache = {}                                  # one forward pass per network
                 fo["extra"] = {}
                 for n, m in self.extra.items():
-                    if id(m.model) not in cache:
-                        cache[id(m.model)] = m.frame_scores(fc, clip_idx)
-                    fo["extra"][n] = cache[id(m.model)]
+                    key = (id(m.model), getattr(m, "frames", None))
+                    if key not in cache:
+                        cache[key] = m.frame_scores(fc, clip_idx)
+                    fo["extra"][n] = cache[key]
             result.append(fo)
         return result, round(time.time() - t, 2)
 
     def readout(self, rows):
         """Per-clip head logits d (K,3) and the self-calibration's spurious evidence g (K,3)."""
-        d = np.stack([r["d"] for r in rows])
+        d = finite_array(np.stack([r["d"] for r in rows]), "DFD head logits", ndim=2)
         y = np.stack([np.r_[r["y_s"], r["y_t"]] for r in rows])
-        return d, ((y - self.mu) / self.sd) @ self.W.T + self.b
+        if d.shape[1] != 3:
+            raise InvalidScores("DFD must return three head logits per clip")
+        return d, readout_shift(y, self.mu, self.sd, self.W, self.b)
 
     @staticmethod
     def prob(D):
         """DFD-FCG's video score: mean over clips (and views) of the mean of the three head sigmoids."""
-        return float(np.mean([np.mean([sig(v) for v in row]) for row in D]))
+        return mean_probability(D)
 
     def face_scores(self, fo):
         """Scores of one face: original DFD-FCG, self-calibrated (the verdict) and strict, averaged over the views.
@@ -477,12 +485,11 @@ class Analyzer:
         out = dict(p_original=self.prob(d), p=self.prob(d - g), p_strict=self.prob(d - g - self.lam * r),
                    d=d0, g=g0, r=r0, clip_p=per.mean(0), view_p=per)
         out["p_dfd"] = out["p"]
-        if self.fusion and "extra" in fo:
-            pd = min(max(out["p_dfd"], 1e-6), 1 - 1e-6)
-            x = {"dfd": math.log(pd / (1 - pd))}
-            for n, raw in fo["extra"].items():
+        if self.fusion:
+            x = {"dfd": logit(out["p_dfd"])}
+            for n, raw in fo.get("extra", {}).items():
                 x[n] = self.extra[n].video_logit(*raw)
-            z = float(np.dot(self.fusion["coef"], [x[k] for k in self.fusion["members"]]) + self.fusion["intercept"])
+            z = fusion_logit(self.fusion, x)
             out["members"] = {k: sig(v) for k, v in x.items()}
             out["p"] = sig(z)
             # timeline: each clip's own DFD-FCG evidence, combined with the other detectors' video scores by the same
@@ -490,13 +497,15 @@ class Analyzer:
             coef = dict(zip(self.fusion["members"], self.fusion["coef"]))
             rest = z - coef.get("dfd", 0.0) * x["dfd"]
             cp = np.clip(np.asarray(out["clip_p"], float), 1e-6, 1 - 1e-6)
-            out["clip_p"] = 1 / (1 + np.exp(-(coef.get("dfd", 0.0) * np.log(cp / (1 - cp)) + rest)))
+            out["clip_p"] = sigmoid(coef.get("dfd", 0.0) * np.log(cp / (1 - cp)) + rest)
         return out
 
     def finish(self, st, outs, model_seconds=None):
         """CPU part: self-calibration, strict mode, the most suspicious face, explanation."""
         marks, t0, clip_idx = st["marks"], st["t0"], st["clip_idx"]
         marks["model_seconds"] = model_seconds
+        if not outs or len(outs) != len(st["crops"]):
+            raise InvalidScores("missing inference output for one or more faces")
         scores = [self.face_scores(fo) for fo in outs]
         k = int(np.argmax([sc["p"] for sc in scores]))
         sc, base = scores[k], outs[k]["base"]
@@ -507,7 +516,7 @@ class Analyzer:
         reg = region_labels(lm)
         region_ev = {name: float(sp[reg == name].sum()) for name in REGIONS}
         face = st["crops"][k][clip_idx[0][0]]
-        p_orig, p_cal, p_strict = sc["p_original"], sc["p"], sc["p_strict"]
+        p_orig, p_cal, p_strict = (probability(sc[key]) for key in ("p_original", "p", "p_strict"))
         fps, needed = st["fps"], st["needed"]
         timeline = [dict(start=round(float(needed[ci[0]]) / fps, 2), end=round(float(needed[ci[-1]]) / fps, 2),
                          p=float(sc["clip_p"][j]), faces=[float(s["clip_p"][j]) for s in scores])
@@ -541,7 +550,10 @@ def certainty(p, view_p, margin=None, agree=None):
     `sure` is kept for old clients and is always True. CERT_MARGIN > 0 restores the old "not sure" rule."""
     margin = CERT_MARGIN if margin is None else margin
     agree = CERT_AGREE if agree is None else agree
-    v = np.asarray(view_p).ravel()
+    p = probability(p)
+    v = finite_array(view_p, "clip probabilities").ravel()
+    if ((v < 0) | (v > 1)).any():
+        raise InvalidScores("clip probabilities must lie in [0, 1]")
     same = float(np.mean((v >= 0.5) == (p >= 0.5)))
     return dict(sure=bool(abs(p - 0.5) >= margin and same >= agree), agreement=same, margin=abs(p - 0.5))
 

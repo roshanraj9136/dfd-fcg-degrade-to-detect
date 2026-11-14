@@ -33,6 +33,7 @@ import torch.nn.functional as F  # noqa: E402
 from sklearn.metrics import roc_auc_score  # noqa: E402
 
 from gend import Scorer  # noqa: E402
+from selection import validate_split_rows, validation_score  # noqa: E402
 
 OUT = Path(sys.argv[1])
 STEPS = int(sys.argv[2]) if len(sys.argv) > 2 else 4000
@@ -40,6 +41,9 @@ LR = float(sys.argv[3]) if len(sys.argv) > 3 else 1e-4
 NAME = sys.argv[4] if len(sys.argv) > 4 else "clip"
 BS = int(os.environ.get("BS", "32"))
 VAL_EVERY = int(os.environ.get("VAL_EVERY", "500"))
+SELECTION_METRIC = os.environ.get("SELECTION_METRIC", "bacc")
+if SELECTION_METRIC not in ("bacc", "auc"):
+    raise ValueError("SELECTION_METRIC must be bacc or auc")
 WARMUP = int(os.environ.get("WARMUP", "200"))
 W_ALIGN, W_UNIF = float(os.environ.get("W_ALIGN", "0.1")), float(os.environ.get("W_UNIF", "0.5"))
 STORE = Path(os.environ.get("STORE", r"D:\dfd-data\ens\store"))
@@ -174,7 +178,8 @@ def evaluate(sc, items):
                             bacc=round(float((np.mean(np.array(rl) < 0.5) + np.mean(np.array(fk) >= 0.5)) / 2), 4))
         res[cond] = dict(per_source=per, auc=round(float(np.mean([v["auc"] for v in per.values()])), 4),
                          bacc=round(float(np.mean([v["bacc"] for v in per.values()])), 4))
-    res["score"] = round((res["clean"]["auc"] + res["degraded"]["auc"]) / 2, 4)
+    res["selection_metric"] = SELECTION_METRIC
+    res["score"] = validation_score(res, SELECTION_METRIC)
     sc.model.train()
     return res
 
@@ -188,6 +193,16 @@ def trainable(model):
         if on:
             out[n] = p
     return out
+
+
+def loader_options():
+    workers = int(os.environ.get("WORKERS", "4"))
+    if workers < 0:
+        raise ValueError("WORKERS must be nonnegative")
+    options = dict(num_workers=workers)
+    if workers:
+        options.update(persistent_workers=True, prefetch_factor=4)
+    return options
 
 
 def main():
@@ -210,8 +225,10 @@ def main():
     elif hasattr(getattr(enc, "backbone", None), "set_grad_checkpointing"):
         enc.backbone.set_grad_checkpointing(True)
     tr, va = rows("train"), rows("val")
+    validate_split_rows(tr, va)
     if os.environ.get("VAL_LIMIT"):
         va = va[::max(1, len(va) // int(os.environ["VAL_LIMIT"]))]
+        validate_split_rows(tr, va)
     log(event="data", train=len(tr), val=len(va),
         by={f"{s}/{l}": sum(1 for r in tr if r["source"] == s and r["label"] == l)
             for s in sorted({r["source"] for r in tr}) for l in (0, 1)})
@@ -224,8 +241,7 @@ def main():
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: min(1.0, (s + 1) / WARMUP) * (0.01 + 0.99 * 0.5 * (1 + math.cos(math.pi * min(s, STEPS) / STEPS))))
     dl = torch.utils.data.DataLoader(Frames(tr, seed=int(os.environ.get("SEED", "1"))), batch_size=BS,
-                                     num_workers=int(os.environ.get("WORKERS", "4")), persistent_workers=True,
-                                     prefetch_factor=4)
+                                     **loader_options())
     it = iter(dl)
     sc.model.train()
     t0, run = time.time(), []
