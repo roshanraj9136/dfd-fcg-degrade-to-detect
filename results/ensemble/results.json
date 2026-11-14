@@ -1259,6 +1259,9 @@
   "overall_acc": 0.851063829787234,
   "overall_acc_original": 0.6312056737588653,
   "overall_videos": 705,
+  "synth_caught": 1.0,
+  "synth_n": 80,
+  "datasets": 9,
   "bands": [
    {
     "lo": 0.5,

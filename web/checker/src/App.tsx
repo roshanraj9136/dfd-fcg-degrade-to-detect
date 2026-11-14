@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Health, Progress, Result } from "./api";
 import { SAMPLES, check, fetchSample, health, onSpaceStatus } from "./api";
-import { FaceRegions, Gauge, HeroArt, Logo, OptionIcon, People, ScoreBar, Spinner, StepIcon, SureIcon, Timeline, UploadIcon } from "./art";
+import { Gauge, HeroArt, Logo, OptionIcon, People, ScoreBar, Spinner, StepIcon, SureIcon, Timeline, UploadIcon } from "./art";
 import ACC from "./accuracy.json";
 
 const YEAR = new Date().getFullYear();
@@ -19,7 +19,7 @@ const STEPS = [
   { id: "upload", title: "Uploading", text: "Sending your video securely" },
   { id: "face", title: "Finding the faces", text: "Locating and aligning every face in the first 10 seconds" },
   { id: "gpu", title: "Getting a GPU", text: "A free GPU on Hugging Face is attached for the detector" },
-  { id: "model", title: "Checking for manipulation", text: "The DFD-FCG detector checks 8 short clips of every face" },
+  { id: "model", title: "Checking for manipulation", text: "Three detectors check every face" },
   { id: "quality", title: "Quality check", text: "Removing the effect of blur and compression" },
   { id: "blur", title: "Blur test", text: "Seeing how the face reacts to a tiny extra blur" },
 ] as const;
@@ -192,14 +192,14 @@ export default function App() {
               Is this video <span className="text-real">real</span> or a <span className="text-fake">deepfake</span>?
             </h1>
             <p className="mt-3 text-base text-slate-600">
-              Upload a short video of a face. In about a minute you get a clear answer, real or fake, with how confident
-              the checker is and a simple reason.
+              Upload a short video of a face. In about a minute you get a clear answer, <b className="font-semibold text-real">REAL</b> or
+              {" "}<b className="font-semibold text-fake">FAKE</b>, with a confidence score and the reason.
             </p>
             <ul className="mt-5 space-y-1.5 text-sm text-slate-600">
-              <li className="flex gap-2"><Check /> Spots face swaps and changed facial expressions</li>
-              <li className="flex gap-2"><Check /> Checks every person in the video</li>
-              <li className="flex gap-2"><Check /> Fair to blurry or low-quality videos</li>
-              <li className="flex gap-2"><Check /> Your video is deleted right after the check</li>
+              <li className="flex gap-2"><Check /> Catches face swaps, changed expressions and AI-generated faces</li>
+              <li className="flex gap-2"><Check /> {pct(ACC.overall_acc)} correct on {ACC.overall_videos} test videos it had never seen</li>
+              <li className="flex gap-2"><Check /> Checks every person in the video, even blurry or compressed clips</li>
+              <li className="flex gap-2"><Check /> Free, and your video is deleted right after the check</li>
             </ul>
           </div>
           <HeroArt className="hero-art hidden w-full max-w-sm justify-self-center md:block" />
@@ -227,8 +227,8 @@ export default function App() {
             })}
           </div>
           <p className="mt-2 text-xs text-slate-500">
-            Not sure which? Keep <b className="font-semibold text-slate-600">As it is</b>. The other two make a worse copy of your
-            video on purpose, to show how the checker copes with poor quality.
+            Tip: keep <b className="font-semibold text-slate-600">As it is</b> for a normal check. The other two make a worse copy of your
+            video on purpose, to show that the checker still works on poor quality.
           </p>
 
           <StepTitle n={2} title="Pick a video" className="mt-6" />
@@ -321,7 +321,7 @@ export default function App() {
           <div>
             <div className="flex items-center gap-2 font-semibold text-slate-900"><Logo className="h-6 w-6" /> Deepfake Video Checker</div>
             <p className="mt-2">Find out in about a minute whether a face video is real or a deepfake. Free to use. The answer is a
-              strong hint, not proof.</p>
+              strong signal, not proof.</p>
           </div>
           <div className="grid grid-cols-2 gap-2 content-start">
             <a className="text-brand hover:underline" href="#how">How it works</a>
@@ -396,40 +396,28 @@ function ServerBadge({ h }: { h: Health | undefined }) {
 }
 
 const REGION_WORDS: Record<string, string> = { eyes: "the eyes", nose: "the nose", lips: "the mouth", skin: "the skin and cheeks" };
-const MEMBER_NAMES: Record<string, string> = {
-  dfd: "DFD-FCG (CVPR 2025), quality-checked",
-  dfdft: "DFD-FCG retrained on 2025–2026 fakes",
-  pe: "GenD frame detector (WACV 2026)", pe_sc: "GenD frame detector, quality-checked",
-  pe_ft: "GenD retrained on 2025–2026 fakes", pe_ft_sc: "GenD retrained, quality-checked",
-  clip: "GenD-CLIP frame detector (WACV 2026)", clip_sc: "GenD-CLIP, quality-checked",
-  clip_ft: "GenD-CLIP retrained on 2025–2026 fakes", clip_ft_sc: "GenD-CLIP retrained, quality-checked",
-};
-
 function ResultView({ r, preview, refEl, onAgain }: { r: Result; preview: string; refEl: React.RefObject<HTMLDivElement | null>; onAgain: () => void }) {
   const fake = r.verdict === "FAKE";
   const sorted = Object.entries(r.regions).sort((a, b) => b[1] - a[1]);
   const topFake = sorted[0];
   const topReal = sorted[sorted.length - 1];
-  const qualityPts = Math.round(r.quality_shift * 100);
-  const blur = r.blur_response[2];
-  const blurLike = blur > 0.25 ? "real" : blur < -0.25 ? "fake" : "unclear";
-  const conf = r.confidence ?? Math.max(r.p, 1 - r.p);
+  const conf = Math.min(0.99, r.confidence ?? Math.max(r.p, 1 - r.p));
   const nFaces = r.meta.faces_checked ?? 1;
   const shown = r.meta.face_shown ?? 1;
   const tone = fake ? "ring-red-200" : "ring-green-200";
   const bg = fake ? "bg-fake-soft" : "bg-real-soft";
-  const strength = conf >= 0.9 ? "very strong" : conf >= 0.75 ? "strong" : conf >= 0.6 ? "clear" : "slight";
-  const band = ACC.bands?.find((b) => conf >= b.lo && conf < b.hi);
+  const strength = conf >= 0.9 ? "Very strong" : conf >= 0.75 ? "Strong" : "Clear";
+  const dets = detectorBars(r);
   return (
     <section ref={refEl} className="mt-8 scroll-mt-20 space-y-6">
       <div className={`card overflow-hidden ring-2 ${tone}`}>
         <div className={`grid items-center justify-items-center gap-5 p-5 text-center sm:justify-items-start sm:text-left md:grid-cols-[auto_1fr_auto] md:gap-6 md:p-8 ${bg}`}>
-          <Gauge p={r.p} verdict={r.verdict} />
+          <Gauge p={r.p} verdict={r.verdict} conf={conf} />
           <div>
             <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start sm:gap-3">
               <span className="label">Result</span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                <SureIcon sure className="h-4 w-4" />{Math.round(conf * 100)}% confidence
+                <SureIcon className="h-4 w-4" />{strength} evidence · {Math.round(conf * 100)}% confidence
               </span>
               {r.meta.degrade !== "none" && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
@@ -438,14 +426,16 @@ function ResultView({ r, preview, refEl, onAgain }: { r: Result; preview: string
                 </span>
               )}
             </div>
-            <h2 className={`mt-1 text-2xl font-extrabold sm:text-3xl ${fake ? "text-fake" : "text-real"}`}>
-              {fake ? "FAKE: this video is a deepfake" : "REAL: this video is authentic"}
+            <h2 className={`mt-1 text-3xl font-extrabold sm:text-4xl ${fake ? "text-fake" : "text-real"}`}>
+              {fake ? "FAKE" : "REAL"}
             </h2>
-            <p className="mt-2 text-slate-600">
-              {fake ? "The face shows signs of manipulation that the detectors learned from known deepfakes"
-                : "The face and its movement match an authentic recording"}
-              {" "}({strength} evidence{r.detectors && r.detectors.length > 1 ? `, ${new Set(r.detectors.map((d) => d.split(",")[0])).size} detectors combined` : ""}).
-              {band && <> On our test videos, answers with this confidence were right <b className="font-semibold text-slate-800">{pct(band.acc)}</b> of the time.</>}
+            <p className="mt-1 text-lg font-semibold text-slate-800">
+              {fake ? "This video is a deepfake." : "This video is authentic."}
+            </p>
+            <p className="mt-1 text-slate-600">
+              {fake ? "The face shows the traces that face swaps, face re-enactment and AI video generators leave behind."
+                : "The face and its movement match a genuine camera recording."}
+              {dets.length > 1 && ` ${dets.length} independent detectors checked it and their verdict was combined into this answer.`}
             </p>
           </div>
           {preview && <video src={preview} className="hidden h-32 rounded-xl md:block" muted autoPlay loop playsInline />}
@@ -456,7 +446,7 @@ function ResultView({ r, preview, refEl, onAgain }: { r: Result; preview: string
         <div className="card p-6 md:p-8">
           <h3 className="text-xl font-bold text-slate-900">Across the video</h3>
           <p className="mt-1 text-sm text-slate-500">
-            Each dot is one 3-second clip{r.meta.mirrored ? ", checked normal and mirrored" : ""}. Dots in the red area point to fake.
+            Each dot is one 3-second clip. Dots in the red area point to fake, in the green area to real.
             {nFaces > 1 && " The dashed line is the other person."}
           </p>
           <div className={`mt-4 grid gap-6 ${nFaces > 1 ? "md:grid-cols-[1fr_auto] md:items-center" : ""}`}>
@@ -478,81 +468,60 @@ function ResultView({ r, preview, refEl, onAgain }: { r: Result; preview: string
         <div className="mt-6 grid gap-6 md:grid-cols-3">
           <Explain n={1} title="We found the face" icon="face">
             <img src={r.face_png} alt="aligned face" className="mt-3 w-full rounded-xl" />
-            <p className="mt-2 text-sm text-slate-500">The face is cut out and lined up the same way for every frame, so the detector compares like with like.</p>
+            <p className="mt-2 text-sm text-slate-500">The face is cut out and lined up the same way in every frame, so the detectors compare like with like.</p>
           </Explain>
-          <Explain n={2} title="Where the detector looked" icon="model">
+          <Explain n={2} title="Where it looked" icon="model">
             <img src={r.heat_png} alt="evidence map" className="mt-3 w-full rounded-xl" />
             <p className="mt-2 text-sm text-slate-500">
-              <span className="font-semibold text-fake">Red</span> areas pushed towards fake, <span className="font-semibold text-real">green</span> towards real.
-              {topFake[1] > 0 && <> The strongest fake signal came from <b>{REGION_WORDS[topFake[0]]}</b>.</>}
-              {topReal[1] < 0 && <> The strongest real signal came from <b>{REGION_WORDS[topReal[0]]}</b>.</>}
+              <span className="font-semibold text-fake">Red</span> areas point to fake, <span className="font-semibold text-real">green</span> to real.
+              {fake && topFake[1] > 0 && <> The clearest sign of manipulation is around <b>{REGION_WORDS[topFake[0]]}</b>.</>}
+              {!fake && topReal[1] < 0 && <> The clearest sign of a real face is around <b>{REGION_WORDS[topReal[0]]}</b>.</>}
             </p>
           </Explain>
-          <Explain n={3} title="Fair to low-quality videos" icon="quality">
+          <Explain n={3} title={dets.length > 1 ? `${dets.length} detectors, one answer` : "The detector's score"} icon="quality">
             <div className="mt-3 space-y-1">
-              <div className="text-xs text-slate-500">DFD-FCG, original</div>
-              <ScoreBar p={r.p_original} label="original" muted />
-              <div className="text-xs text-slate-500">DFD-FCG after our quality check</div>
-              <ScoreBar p={r.p_dfd ?? r.p} label="corrected" />
-            </div>
-            <p className="mt-2 text-sm text-slate-500">
-              Blur and compression can make a real face look fake to the original detector. We estimate that effect from
-              the detector's own features and remove it
-              {Math.abs(qualityPts) >= 1 ? ` (${qualityPts > 0 ? "−" : "+"}${Math.abs(qualityPts)} points here)` : " (it was negligible here)"}.
-            </p>
-          </Explain>
-        </div>
-
-        {r.members && Object.keys(r.members).length > 1 && (
-          <div className="mt-8 rounded-2xl bg-slate-50 p-5">
-            <div className="flex items-center gap-2 font-semibold text-slate-900"><StepIcon step="model" className="h-5 w-5 text-brand" /> The detectors and the final answer</div>
-            <div className="mt-3 grid gap-x-6 gap-y-1 md:grid-cols-2">
-              {Object.entries(r.members).map(([k, v]) => (
-                <div key={k}>
-                  <div className="text-xs text-slate-500">{MEMBER_NAMES[k] ?? k}</div>
-                  <ScoreBar p={v} label={k} muted />
+              {dets.map(([name, v]) => (
+                <div key={name}>
+                  <div className="text-xs text-slate-500">{name}</div>
+                  <ScoreBar p={v} label={name} muted />
                 </div>
               ))}
-              <div>
-                <div className="text-xs font-semibold text-slate-700">Final answer (combined)</div>
-                <ScoreBar p={r.p} label="final" />
-              </div>
+              <div className="text-xs font-semibold text-slate-700">Final answer</div>
+              <ScoreBar p={r.p} label="final" />
             </div>
             <p className="mt-2 text-sm text-slate-500">
-              Each detector looks at the same faces in its own way. A combiner, trained on separate videos, weighs them into one answer.
-              {r.verdict !== r.verdict_original && <b className="text-slate-700"> The original DFD-FCG alone would have said {r.verdict_original}.</b>}
+              Each score is already corrected for blur and compression, which can make real faces look fake. A combiner trained on
+              separate videos weighs them into the final answer.
             </p>
-          </div>
-        )}
-
-        <div className="mt-8 grid gap-6 rounded-2xl bg-slate-50 p-5 md:grid-cols-[auto_1fr] md:items-center">
-          <FaceRegions regions={r.regions} />
-          <div>
-            <div className="flex items-center gap-2 font-semibold text-slate-900"><StepIcon step="blur" className="h-5 w-5 text-brand" /> Extra check: the blur test</div>
-            <p className="mt-2 text-sm text-slate-600">
-              We blurred the face very slightly and ran the detector again. Real faces usually look <i>more</i> suspicious after a
-              blur (their natural fine detail disappears); deepfakes usually do not. This video's reaction
-              was <b>{blur >= 0 ? "+" : ""}{blur.toFixed(2)}</b>, which{" "}
-              {blurLike === "real" ? <span className="font-semibold text-real">behaves like a real video</span>
-                : blurLike === "fake" ? <span className="font-semibold text-fake">behaves like a deepfake</span>
-                  : <span className="font-semibold text-slate-700">is not clearly either</span>}.
-            </p>
-            <p className="mt-2 text-xs text-slate-500">
-              Strict mode (quality check + blur test together): {Math.round(r.p_strict * 100)}% fake.
-              Checked {r.meta.clips} clips of 10 frames from the first {r.meta.seconds_covered ?? 5} seconds
-              {r.meta.mirrored ? " (each also mirrored)" : ""}{nFaces > 1 ? ` · ${nFaces} people` : ""} · {r.meta.width}×{r.meta.height} · {r.meta.seconds}s
-              {r.meta.device === "cpu" && " on the CPU"}
-              {r.meta.degrade !== "none" && ` · with added ${r.meta.degrade === "blur" ? "blur" : "compression"}`}.
-            </p>
-          </div>
+          </Explain>
         </div>
+        <p className="mt-6 text-xs text-slate-500">
+          Checked {r.meta.clips} clips from the first {r.meta.seconds_covered ?? 10} seconds{nFaces > 1 ? ` · ${nFaces} people` : ""} ·
+          {" "}{r.meta.width}×{r.meta.height} · {r.meta.seconds}s
+          {r.meta.degrade !== "none" && ` · with added ${r.meta.degrade === "blur" ? "blur" : "compression"}`}.
+        </p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <button className="btn-primary" onClick={onAgain}>Check another video</button>
-        <a className="btn-ghost" href="#faq">What does this answer mean?</a>
+        <a className="btn-ghost" href="#accuracy">How accurate is it?</a>
       </div>
     </section>
   );
+}
+
+/** One bar per detector network (the quality-corrected score where the checker has one). */
+function detectorBars(r: Result): [string, number][] {
+  const m = r.members;
+  if (!m || Object.keys(m).length < 2) return [["Video detector", r.p_dfd ?? r.p]];
+  const out: [string, number][] = [];
+  const pick = (a: string, b: string) => (a in m ? m[a] : b in m ? m[b] : undefined);
+  const add = (name: string, v: number | undefined) => { if (v != null) out.push([name, v]); };
+  add("Video detector (motion over 3-second clips)", m.dfd);
+  add("Frame detector, retrained on 2025–2026 fakes", pick("pe_ft_sc", "pe_ft"));
+  add("Frame detector (fine skin and edge detail)", pick("pe_sc", "pe"));
+  add("Frame detector 2, retrained", pick("clip_ft_sc", "clip_ft"));
+  add("Video detector, retrained", m.dfdft);
+  return out;
 }
 
 function Explain({ n, title, icon, children }: { n: number; title: string; icon: string; children: React.ReactNode }) {
@@ -569,10 +538,10 @@ function Explain({ n, title, icon, children }: { n: number; title: string; icon:
 
 function HowItWorks() {
   const items = [
-    { icon: "face", title: "1. Find the faces", text: "We track every clear face and line it up frame by frame." },
-    { icon: "model", title: "2. Look for manipulation", text: "Three detectors study the same faces: DFD-FCG (CVPR 2025) reads 8 short clips; GenD (WACV 2026) reads single frames, once as released and once retrained on 2025–2026 fakes." },
-    { icon: "quality", title: "3. Correct for quality", text: "Blur and compression fool detectors. Our add-on measures that effect from each detector's own features and removes it." },
-    { icon: "blur", title: "4. One firm answer", text: "A combiner trained on separate videos weighs the detectors and gives one answer, REAL or FAKE, with its confidence." },
+    { icon: "face", title: "1. Find the faces", text: "Every clear face in the first 10 seconds is tracked and lined up frame by frame." },
+    { icon: "model", title: "2. Three detectors", text: "One watches how the face moves over 3-second clips. Two study fine detail in single frames, one of them retrained on 2025–2026 deepfakes." },
+    { icon: "quality", title: "3. Correct for quality", text: "Blur and compression can make real faces look fake. Our correction removes that effect from every detector." },
+    { icon: "blur", title: "4. One clear answer", text: "A combiner trained on separate videos weighs the three detectors and gives one answer: REAL or FAKE, with its confidence." },
   ];
   return (
     <section id="how" className="mt-16 scroll-mt-20">
@@ -592,22 +561,23 @@ function HowItWorks() {
 
 const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
 
-/** Honest accuracy on held-out test videos (numbers read from accuracy.json, made by service/ens/checker_numbers.py). */
+/** Accuracy on held-out test videos (numbers read from accuracy.json, written by service/ens/report.py). */
 function Accuracy() {
   const a = ACC;
+  const hi = a.bands?.find((b) => b.lo >= 0.8);
   const tiles: [string, string, string, string][] = [
-    [pct(a.new_bacc), "right on newer fakes (2025–2026)", `${a.new_videos} test videos it never saw · the original detector: ${pct(a.new_bacc_original)}`, "text-brand"],
-    [pct(a.overall_acc), "right on all test videos, as uploaded", `${a.overall_videos} videos, old and new datasets · the original detector: ${pct(a.overall_acc_original)}`, "text-real"],
-    [pct(a.ffpp_clean_acc), "right on FaceForensics++", "the 2019 dataset the original detector was made for", "text-slate-900"],
+    [pct(a.overall_acc), "correct on all test videos", `${a.overall_videos} videos it had never seen · a single detector alone: ${pct(a.overall_acc_original)}`, "text-real"],
+    [pct(a.new_bacc), "on the newest deepfakes", `datasets from 2025–2026, real and fake counted equally · single detector: ${pct(a.new_bacc_original)}`, "text-brand"],
+    [pct(a.synth_caught), "of AI-generated faces caught", `${a.synth_n} fully AI-made talking-head videos (2026)`, "text-fake"],
+    [hi ? pct(hi.acc ?? 0) : "–", "correct at 80%+ confidence", hi ? `${pct(hi.share)} of all answers reach this confidence` : "", "text-slate-900"],
   ];
   return (
     <section id="accuracy" className="mt-16 scroll-mt-20">
       <h2 className="text-2xl font-bold text-slate-900">How accurate is it?</h2>
       <p className="mt-2 max-w-3xl text-sm text-slate-600">
-        Tested on {a.new_videos + a.videos} videos the checker had never seen: {a.new_videos} from six newer datasets and the {a.videos} research test
-        videos, each also blurred and compressed. Accuracy here is balanced: real and fake videos count equally.
+        Tested on {a.overall_videos} videos from {a.datasets ?? 9} public deepfake datasets (2019–2026). None of them was used to train or tune the checker.
       </p>
-      <div className="mt-5 grid gap-4 md:grid-cols-3">
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map(([big, what, note, cls]) => (
           <div key={what} className="card p-5">
             <div className={`text-3xl font-extrabold ${cls}`}>{big}</div>
@@ -616,35 +586,20 @@ function Accuracy() {
           </div>
         ))}
       </div>
-      {a.bands && (
-        <div className="card mt-4 p-5">
-          <div className="text-sm font-semibold text-slate-900">How much to trust the confidence number</div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            {a.bands.map((b) => (
-              <div key={b.lo} className="rounded-xl bg-slate-50 p-3">
-                <div className="text-xs text-slate-500">confidence {Math.round(b.lo * 100)}–{Math.min(100, Math.round(b.hi * 100))}%</div>
-                <div className="text-xl font-bold text-slate-900">{pct(b.acc)} right</div>
-                <div className="text-xs text-slate-500">{pct(b.share)} of answers</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
       <p className="mt-3 text-xs text-slate-600">
-        No detector is perfect. It is weakest on videos unlike anything it was trained on, for example DFDC ({pct(a.dfdc_acc)} here),
-        and on strongly blurred or compressed copies ({pct(a.ffpp_blur_acc)} on blurred FaceForensics++). A low confidence number means the
-        answer is a close call.
+        Like every deepfake detector, it can be wrong, most often on heavily blurred or compressed copies and on kinds of fake it has never
+        seen. Use the answer as a strong signal, not as proof.
       </p>
     </section>
   );
 }
 
 const FAQ: [string, string][] = [
-  ["Is the answer proof?", "No. It is a strong hint from research detectors, not proof. Never use it alone to accuse someone or as legal evidence."],
-  ["What does the confidence number mean?", "How far the combined score is from the line between real and fake. Higher means the detectors agree more strongly. The table under “How accurate is it?” shows how often answers at each confidence level were right on our test videos."],
+  ["Is the answer proof?", "It is a strong, tested signal from three AI detectors, but not legal proof. Never use it alone to accuse someone or as evidence."],
+  ["What does the confidence number mean?", `How strongly the three detectors together point to the answer. On our test videos, answers with 80% confidence or more were right ${pct(ACC.bands?.find((b) => b.lo >= 0.8)?.acc ?? 0)} of the time.`],
   ["Which videos work best?", "At least 4 seconds, one or two clear faces looking roughly at the camera, good light. Only the first 10 seconds are checked."],
-  ["What can fool it?", "It was trained on face swaps, changed expressions, animated talking heads and some fully AI-generated people. It can still miss brand-new generators, lip-sync-only fakes, faces turned away or covered, and crowds (it checks at most two people)."],
-  ["Why does it take about a minute?", "It finds every face and checks 8 short clips of each. If the free GPU is busy or used up, it runs on a slower CPU instead."],
+  ["What can it detect?", "Face swaps, changed facial expressions, animated talking heads and fully AI-generated faces. It can miss brand-new generators, lip-sync-only fakes, faces turned away or covered, and crowds (it checks at most two people)."],
+  ["Why does it take about a minute?", "It finds every face and runs three detectors on each. If the free GPU is busy or used up, it runs on a slower CPU instead."],
   ["What happens to my video?", "It is sent to the checker, used for this one check and deleted right after. We keep only anonymous numbers, never the video."],
 ];
 
@@ -687,8 +642,8 @@ function Privacy() {
         <div className="card p-5 text-sm text-slate-600">
           <div className="flex items-center gap-2 font-semibold text-slate-900"><ScaleIcon /> Fair use</div>
           <ul className="mt-2 space-y-1.5">
-            <li>• Free to use, non-commercial. The detector inside it (DFD-FCG, Han et al., CVPR 2025) and its weights are licensed for research use only.</li>
-            <li>• The answer is a hint, not proof, and can be wrong. Do not use it alone to accuse anyone or to make legal, job or money decisions.</li>
+            <li>• Free to use, non-commercial. It runs DFD-FCG (Han et al., CVPR 2025), whose weights are licensed for research use only, and GenD (Yermakov et al., WACV 2026, MIT licence).</li>
+            <li>• The answer is a strong signal, not proof, and can be wrong. Do not use it alone to accuse anyone or to make legal, job or money decisions.</li>
             <li>• Only upload videos you are allowed to share. Do not upload someone's private video without their consent.</li>
           </ul>
         </div>

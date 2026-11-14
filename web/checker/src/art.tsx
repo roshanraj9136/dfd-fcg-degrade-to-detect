@@ -86,30 +86,19 @@ export function StepIcon({ step, className = "h-6 w-6" }: { step: string; classN
   }
 }
 
-export function Gauge({ p, verdict, unsure = false }: { p: number; verdict: "REAL" | "FAKE"; unsure?: boolean }) {
+export function Gauge({ p, verdict, conf: c }: { p: number; verdict: "REAL" | "FAKE"; conf?: number }) {
   const fake = verdict === "FAKE";
-  const conf = fake ? p : 1 - p;
+  const conf = Math.min(0.99, c ?? (fake ? p : 1 - p));
   const R = 54, C = 2 * Math.PI * R;
-  const color = unsure ? "#d97706" : fake ? "#dc2626" : "#16a34a";
-  if (unsure) {
-    // a near-50/50 score must not look like a confident verdict: amber ring at the fake score, "NOT SURE" in the middle
-    return (
-      <svg viewBox="0 0 140 140" className="h-40 w-40" role="img" aria-label={`Not sure, ${Math.round(p * 100)}% fake, leans ${verdict.toLowerCase()}`}>
-        <circle cx="70" cy="70" r={R} fill="none" style={{ stroke: "var(--color-slate-200)" }} strokeWidth="14" />
-        <circle cx="70" cy="70" r={R} fill="none" stroke={color} strokeWidth="14" strokeLinecap="round"
-          strokeDasharray={`${C * p} ${C}`} transform="rotate(-90 70 70)" />
-        <text x="70" y="64" textAnchor="middle" fontSize="15.5" fontWeight="800" fill={color}>NOT SURE</text>
-        <text x="70" y="86" textAnchor="middle" fontSize="12.5" style={{ fill: "var(--color-slate-500)" }}>{Math.round(p * 100)}% fake</text>
-      </svg>
-    );
-  }
+  const color = fake ? "#dc2626" : "#16a34a";
   return (
     <svg viewBox="0 0 140 140" className="h-40 w-40" role="img" aria-label={`${verdict}, ${Math.round(conf * 100)}% confidence`}>
       <circle cx="70" cy="70" r={R} fill="none" style={{ stroke: "var(--color-slate-200)" }} strokeWidth="14" />
       <circle cx="70" cy="70" r={R} fill="none" stroke={color} strokeWidth="14" strokeLinecap="round"
         strokeDasharray={`${C * conf} ${C}`} transform="rotate(-90 70 70)" />
-      <text x="70" y="66" textAnchor="middle" fontSize="26" fontWeight="800" fill={color}>{verdict}</text>
-      <text x="70" y="90" textAnchor="middle" fontSize="13" style={{ fill: "var(--color-slate-500)" }}>{Math.round(conf * 100)}% confidence</text>
+      <text x="70" y="62" textAnchor="middle" fontSize="25" fontWeight="800" fill={color}>{verdict}</text>
+      <text x="70" y="86" textAnchor="middle" fontSize="17" fontWeight="700" style={{ fill: "var(--color-slate-700)" }}>{Math.round(conf * 100)}%</text>
+      <text x="70" y="101" textAnchor="middle" fontSize="10.5" style={{ fill: "var(--color-slate-500)" }}>confidence</text>
     </svg>
   );
 }
@@ -132,7 +121,7 @@ export function ScoreBar({ p, label, muted = false }: { p: number; label: string
       <text x="308" y="50" fontSize="10" fill="#dc2626" textAnchor="end">fake</text>
       <circle cx={x} cy="26" r="9" fill={fake ? "#dc2626" : "#16a34a"} style={{ stroke: "var(--color-white)" }} strokeWidth="3" opacity={muted ? 0.65 : 1} />
       <text x={Math.min(294, Math.max(26, x))} y="10" fontSize="11" fontWeight="700" textAnchor="middle" fill={fake ? "#dc2626" : "#16a34a"} opacity={muted ? 0.75 : 1}>
-        {Math.round(p * 100)}%
+        {Math.min(99, Math.max(1, Math.round(p * 100)))}%
       </text>
     </svg>
   );
@@ -227,12 +216,10 @@ export function People({ ps, shown }: { ps: number[]; shown: number }) {
   );
 }
 
-/** Small badge icon: a check in a shield (sure) or a question mark (not sure). */
-export function SureIcon({ sure, className = "h-5 w-5" }: { sure: boolean; className?: string }) {
-  return sure ? (
+/** Small badge icon: a check in a shield. */
+export function SureIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
     <svg viewBox="0 0 24 24" className={className} {...stroke}><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></svg>
-  ) : (
-    <svg viewBox="0 0 24 24" className={className} {...stroke}><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6v.6" /><circle cx="12" cy="17" r=".6" fill="currentColor" /></svg>
   );
 }
 

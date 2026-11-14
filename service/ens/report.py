@@ -151,7 +151,8 @@ def main():
                    ffpp_clean_acc=acc("ffpp:clean"), ffpp_blur_acc=acc("ffpp:GB_5"),
                    ffpp_blur_acc_original=acc("ffpp:GB_5", base), dfdc_acc=acc("dfdc:clean"),
                    overall_acc=float(right.mean()), overall_acc_original=float(right_base.mean()), overall_videos=len(pool),
-                   bands=bands, option=CHOSEN)
+                   synth_caught=opts[CHOSEN]["synth"]["caught"], synth_n=opts[CHOSEN]["synth"]["n"],
+                   datasets=len(GROUP_NEW) + 3, bands=bands, option=CHOSEN)
     (ROOT / "web" / "checker" / "src" / "accuracy.json").write_text(json.dumps(checker, indent=1))
     out["checker"] = checker
     for p in (ROOT / "results" / "ensemble" / "results.json", ROOT / "web" / "viva" / "src" / "ensemble.json"):

@@ -485,6 +485,12 @@ class Analyzer:
             z = float(np.dot(self.fusion["coef"], [x[k] for k in self.fusion["members"]]) + self.fusion["intercept"])
             out["members"] = {k: sig(v) for k, v in x.items()}
             out["p"] = sig(z)
+            # timeline: each clip's own DFD-FCG evidence, combined with the other detectors' video scores by the same
+            # combiner, so the dots sit on the same side of the line as the final answer unless one clip disagrees
+            coef = dict(zip(self.fusion["members"], self.fusion["coef"]))
+            rest = z - coef.get("dfd", 0.0) * x["dfd"]
+            cp = np.clip(np.asarray(out["clip_p"], float), 1e-6, 1 - 1e-6)
+            out["clip_p"] = 1 / (1 + np.exp(-(coef.get("dfd", 0.0) * np.log(cp / (1 - cp)) + rest)))
         return out
 
     def finish(self, st, outs, model_seconds=None):
