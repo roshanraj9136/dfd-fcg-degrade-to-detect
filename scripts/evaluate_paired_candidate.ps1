@@ -10,6 +10,12 @@ $log = 'D:\dfd-data\ens\ft_pe_paired_v1\train_log.jsonl'
 if (-not (Test-Path -LiteralPath $log)) { throw 'Training log missing' }
 $last = Get-Content -LiteralPath $log -Tail 1 | ConvertFrom-Json
 if ($last.event -ne 'done') { throw 'Training did not finish; candidate evaluation stopped' }
+# The first run retained step zero and redundantly rescored the same weights.
+# Future runs can stop here: train_gend only replaces best.pt on strict gain.
+if ($last.best -le $last.base) {
+    Write-Output 'No checkpoint improved the starting model; duplicate scoring/evaluation skipped. No deployment performed.'
+    exit 0
+}
 New-Item -ItemType Directory -Force -Path $Output | Out-Null
 $env:HF_HUB_CACHE = 'D:\hf-cache'
 $env:HF_HUB_OFFLINE = '1'

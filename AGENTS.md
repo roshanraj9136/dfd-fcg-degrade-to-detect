@@ -169,7 +169,7 @@ All Kiro background jobs are finished; GPU and CPU are free; keep-awake script s
 never sleep and lid-close = do nothing (restore commands in `HANDOFF.md`). Working copy used for every deployment:
 `C:\Users\hp\dfd-work\dfd-fcg-reliability`; a fresh clone also exists at `C:\Users\hp\dfd-fcg-degrade-to-detect`.
 
-## 8. Astra update (14 Nov 2026, 9:17 PM)
+## 8. Astra update (14 Nov 2026, 11:25 PM)
 
 PR #1 is merged. Reliability fixes are deployed at HF Space revision
 `fed1102e759487ea0766e7576e643b169ce4332d`: invalid-score guards, main-face tracking
@@ -179,19 +179,25 @@ UI check pass. The five-score model weights and published accuracy are unchanged
 The reweighting and 127-option CLIP experiments failed their release rules; see
 `results/reliability_followup.md` and `results/ensemble/round3_clip/`.
 
-**GPU is occupied now. Do not launch a second GPU job.** Active checkout:
-`C:\Users\hp\dfd-fcg-degrade-to-detect`. A 1,000-step PE continuation is running
-via `scripts/train_paired_candidate.ps1` (launcher PID 13776 at this writing).
-It uses 2,143 training videos, 131 verified FF++ real/fake pairs, and 313 validation
+**Training and evaluation are complete; the GPU job queue is empty.** Active
+checkout: `C:\Users\hp\dfd-fcg-degrade-to-detect`. The 1,000-step PE continuation
+used 2,143 training videos, 131 verified FF++ real/fake pairs, and 313 validation
 videos after excluding synth. All 96 missing real counterparts were prepared.
-Step-zero mean validation AUROC is 0.9038 on this restricted cohort; it is not
-directly comparable to the earlier full-cohort number. Protocol: `PAIRED_PLAN.md`.
+Validation AUROC: step 0 = 0.9038, step 250 = 0.9033, steps 500/750/1000 = 0.9024.
+The retained checkpoint is tensor-for-tensor identical to the starting PE model
+(104 tensors checked). No trained checkpoint improved the selection metric.
+These scores are not directly comparable to the earlier full-cohort number.
+Protocol: `results/ensemble/PAIRED_PLAN.md`.
 
 Logs: `D:\dfd-data\ens\paired_v1\train.out`, `train.err`; model log/checkpoints:
-`D:\dfd-data\ens\ft_pe_paired_v1\`. The queued evaluator (PID 20272) waits for
-successful training, then scores the candidate and freezes validation selection
-before test evaluation. Logs: `paired_v1\evaluate.out`, `evaluate.err`; cached
+`D:\dfd-data\ens\ft_pe_paired_v1\`. The evaluator completed all scoring and
+froze validation selection before test evaluation. Logs:
+`paired_v1\evaluate.out`, `evaluate.err`; cached
 scores: `D:\dfd-data\ens\paired_scores_v1`; results: `results/ensemble/paired_v1`.
-It never deploys automatically. Inspect those jobs before starting anything new;
-PIDs are historical identifiers, so verify their command lines if still running.
-After a qualifying result, run candidate parity and samples before release.
+The selected fusion was again `dfd+pe_ft_sc+pe_sc`; newer-set balanced accuracy
+fell from 85.02% to 82.72%, so the release rule failed. No replacement was deployed.
+The temporary keep-awake helper released its request at 11:13 PM after both jobs
+exited. Existing power-plan settings were not changed by that helper.
+For future runs, inspect actual processes before starting a GPU job. Do not repeat
+this unchanged short continuation expecting a different result. A future candidate
+still needs validation selection, the release checks, parity and samples.
