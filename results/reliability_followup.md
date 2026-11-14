@@ -1,6 +1,6 @@
 # Reliability follow-up (14 November 2026)
 
-**Status: reliability fixes deployed and verified; paired PE training running.
+**Status: reliability fixes deployed and verified; paired PE training/evaluation complete.
 No newly measured accuracy gain.** The result
 remains REAL or FAKE. Invalid inference produces an analysis error.
 
@@ -123,7 +123,7 @@ files, and no identical repository/path occurring across declared splits. This
 does not establish identity-disjoint evaluation. GenD's paired-data motivation
 is documented in [the authors' paper](https://arxiv.org/html/2508.06248v2#S4.SS4).
 
-## Deployment and next training run
+## Deployment and completed paired training run
 
 The reliability backend is live at Space revision
 `fed1102e759487ea0766e7576e643b169ce4332d`. The initial upload exposed CRLF line
@@ -139,5 +139,17 @@ pairs (119 originals; 12 fakes excluded because their originals were reserved).
 The separate store contains 2,143 training videos and 353 validation videos;
 the continuation selects checkpoints on 313 validation videos after excluding
 synth. `PAIRED_PLAN.md` freezes the 1,000-step continuation and subsequent fusion
-comparison. The queued evaluator runs only after successful training, freezes
-its validation choice before test evaluation, and never deploys automatically.
+comparison. Training and the queued evaluation completed successfully. Validation
+AUROC was 0.9038 at step zero, 0.9033 at step 250, and 0.9024 at steps 500, 750,
+and 1,000. The selected checkpoint retained the starting weights; all 104 tensors
+were verified equal. This short continuation did not improve the member.
+
+The 127-option fusion comparison again selected `dfd+pe_ft_sc+pe_sc`. Its newer-set
+test balanced accuracy was 82.72% versus the deployed 85.02%, failing the release
+rule. No model replacement was deployed. All options, frozen weights and the
+training log are in `ensemble/paired_v1/`. This result does not establish that
+paired training in general is ineffective; it tests this specific continuation.
+
+Training ended at approximately 10:35 PM and evaluation at 11:13 PM on 14 November.
+The temporary keep-awake request was released automatically after both jobs ended;
+the helper did not change existing power-plan settings.
