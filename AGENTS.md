@@ -161,6 +161,10 @@ fix, fine-tuning DFD-FCG's side network alone (round 1), fusion fitted on clean 
 
 ## 7. Machine state (14 Nov, 1:35 PM)
 
+**Division of work (14 Nov, 1:45 PM):** Astra owns the GPU and all code / model changes (branch
+`codex/reliability-and-validation`, GenD-CLIP evaluation, fusion updates). Kiro only writes the paper draft in
+`paper/` and a CPU-only script `service/ens/selfcal_transfer.py` that reads stored scores. No overlap in files.
+
 All Kiro background jobs are finished; GPU and CPU are free; keep-awake script stopped. Power plan (AC) was set to
 never sleep and lid-close = do nothing (restore commands in `HANDOFF.md`). Working copy used for every deployment:
 `C:\Users\hp\dfd-work\dfd-fcg-reliability`; a fresh clone also exists at `C:\Users\hp\dfd-fcg-degrade-to-detect`.
