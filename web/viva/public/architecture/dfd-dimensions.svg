@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1152pt" height="1274.4pt" viewBox="0 0 1152 1274.4" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-11-16T16:34:57.731130</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.1, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 1274.4 
+L 1152 1274.4 
+L 1152 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 53.28 122.4 
+L 342.72 122.4 
+Q 352.8 122.4 352.8 132.48 
+L 352.8 213.12 
+Q 352.8 223.2 342.72 223.2 
+L 53.28 223.2 
+Q 43.2 223.2 43.2 213.12 
+L 43.2 132.48 
+Q 43.2 122.4 53.28 122.4 
+z
+" clip-path="url(#p9693e40851)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 398.88 122.4 
+L 724.32 122.4 
+Q 734.4 122.4 734.4 132.48 
+L 734.4 213.12 
+Q 734.4 223.2 724.32 223.2 
+L 398.88 223.2 
+Q 388.8 223.2 388.8 213.12 
+L 388.8 132.48 
+Q 388.8 122.4 398.88 122.4 
+z
+" clip-path="url(#p9693e40851)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 780.48 122.4 
+L 1098.72 122.4 
+Q 1108.8 122.4 1108.8 132.48 
+L 1108.8 213.12 
+Q 1108.8 223.2 1098.72 223.2 
+L 780.48 223.2 
+Q 770.4 223.2 770.4 213.12 
+L 770.4 132.48 
+Q 770.4 122.4 780.48 122.4 
+z
+" clip-path="url(#p9693e40851)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 354.797314 172.8 
+Q 368.998471 172.8 381.29897 172.8 
+" clip-path="url(#p9693e40851)" style="fill: none; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 374.09897 169.2 
+L 381.29897 172.8 
+L 374.09897 176.4 
+z
+" clip-path="url(#p9693e40851)" style="fill: #64748b; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 736.397314 172.8 
+Q 750.598471 172.8 762.89897 172.8 
+" clip-path="url(#p9693e40851)" style="fill: none; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 755.69897 169.2 
+L 762.89897 172.8 
+L 755.69897 176.4 
+z
+" clip-path="url(#p9693e40851)" style="fill: #64748b; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 53.28 280.8 
+L 551.52 280.8 
+Q 561.6 280.8 561.6 290.88 
+L 561.6 461.52 
+Q 561.6 471.6 551.52 471.6 
+L 53.28 471.6 
+Q 43.2 471.6 43.2 461.52 
+L 43.2 290.88 
+Q 43.2 280.8 53.28 280.8 
+z
+" clip-path="url(#p9693e40851)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 600.48 280.8 
+L 1098.72 280.8 
+Q 1108.8 280.8 1108.8 290.88 
+L 1108.8 461.52 
+Q 1108.8 471.6 1098.72 471.6 
+L 600.48 471.6 
+Q 590.4 471.6 590.4 461.52 
+L 590.4 290.88 
+Q 590.4 280.8 600.48 280.8 
+z
+" clip-path="url(#p9693e40851)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 302.4 473.60127 
+Q 302.4 482.402994 302.4 489.304061 
+" clip-path="url(#p9693e40851)" style="fill: none; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 306 482.104061 
+L 302.4 489.304061 
+L 298.8 482.104061 
+z
+" clip-path="url(#p9693e40851)" style="fill: #64748b; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 849.6 473.60127 
+Q 849.6 482.402994 849.6 489.304061 
+" clip-path="url(#p9693e40851)" style="fill: none; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 853.2 482.104061 
+L 849.6 489.304061 
+L 846 482.104061 
+z
+" clip-path="url(#p9693e40851)" style="fill: #64748b; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 53.28 496.8 
+L 551.52 496.8 
+Q 561.6 496.8 561.6 506.88 
+L 561.6 555.12 
+Q 561.6 565.2 551.52 565.2 
+L 53.28 565.2 
+Q 43.2 565.2 43.2 555.12 
+L 43.2 506.88 
+Q 43.2 496.8 53.28 496.8 
+z
+" clip-path="url(#p9693e40851)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 600.48 496.8 
+L 1098.72 496.8 
+Q 1108.8 496.8 1108.8 506.88 
+L 1108.8 555.12 
+Q 1108.8 565.2 1098.72 565.2 
+L 600.48 565.2 
+Q 590.4 565.2 590.4 555.12 
+L 590.4 506.88 
+Q 590.4 496.8 600.48 496.8 
+z
+" clip-path="url(#p9693e40851)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 53.28 615.6 
+L 551.52 615.6 
+Q 561.6 615.6 561.6 625.68 
+L 561.6 821.52 
+Q 561.6 831.6 551.52 831.6 
+L 53.28 831.6 
+Q 43.2 831.6 43.2 821.52 
+L 43.2 625.68 
+Q 43.2 615.6 53.28 615.6 
+z
+" clip-path="url(#p9693e40851)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 600.48 615.6 
+L 1098.72 615.6 
+Q 1108.8 615.6 1108.8 625.68 
+L 1108.8 821.52 
+Q 1108.8 831.6 1098.72 831.6 
+L 600.48 831.6 
+Q 590.4 831.6 590.4 821.52 
+L 590.4 625.68 
+Q 590.4 615.6 600.48 615.6 
+z
+" clip-path="url(#p9693e40851)" style="fill: #f0fdfa; stroke: #0f766e; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 302.4 833.597314 
+Q 302.4 847.798471 302.4 860.09897 
+" clip-path="url(#p9693e40851)" style="fill: none; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 306 852.89897 
+L 302.4 860.09897 
+L 298.8 852.89897 
+z
+" clip-path="url(#p9693e40851)" style="fill: #64748b; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_16">
+    <path d="M 849.6 833.597314 
+Q 849.6 847.798471 849.6 860.09897 
+" clip-path="url(#p9693e40851)" style="fill: none; stroke: #0f766e; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 853.2 852.89897 
+L 849.6 860.09897 
+L 846 852.89897 
+z
+" clip-path="url(#p9693e40851)" style="fill: #0f766e; stroke: #0f766e; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_17">
+    <path d="M 53.28 867.6 
+L 1098.72 867.6 
+Q 1108.8 867.6 1108.8 877.68 
+L 1108.8 990.72 
+Q 1108.8 1000.8 1098.72 1000.8 
+L 53.28 1000.8 
+Q 43.2 1000.8 43.2 990.72 
+L 43.2 877.68 
+Q 43.2 867.6 53.28 867.6 
+z
+" clip-path="url(#p9693e40851)" style="fill: #f0fdfa; stroke: #0f766e; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_18">
+    <path d="M 53.28 1029.6 
+L 1098.72 1029.6 
+Q 1108.8 1029.6 1108.8 1039.68 
+L 1108.8 1113.12 
+Q 1108.8 1123.2 1098.72 1123.2 
+L 53.28 1123.2 
+Q 43.2 1123.2 43.2 1113.12 
+L 43.2 1039.68 
+Q 43.2 1029.6 53.28 1029.6 
+z
+" clip-path="url(#p9693e40851)" style="fill: #f8fafc; stroke: #475569; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 25px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="43.2" y="62.196094" transform="rotate(-0 43.2 62.196094)">1. Inside DFD-FCG: every important dimension</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="43.2" y="90.138047" transform="rotate(-0 43.2 90.138047)">Blue = the authors' detector. Teal = our fitted self-calibration. Shapes use channel-first tensors after preprocessing.</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4338ca" x="57.6" y="148.197656" transform="rotate(-0 57.6 148.197656)">Aligned face crops</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="173.317969" transform="rotate(-0 57.6 173.317969)">RGB array: [N, 150, 150, 3]</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="194.197969" transform="rotate(-0 57.6 194.197969)">Select 10 frames per clip.</text>
+   </g>
+   <g id="text_6">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4338ca" x="403.2" y="148.197656" transform="rotate(-0 403.2 148.197656)">Resize + normalize</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="403.2" y="173.317969" transform="rotate(-0 403.2 173.317969)">Model input: [B, 10, 3, 224, 224]</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="403.2" y="194.197969" transform="rotate(-0 403.2 194.197969)">B = clips in one forward-pass batch</text>
+   </g>
+   <g id="text_9">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4338ca" x="784.8" y="148.197656" transform="rotate(-0 784.8 148.197656)">Frozen CLIP ViT-L/14</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="784.8" y="173.317969" transform="rotate(-0 784.8 173.317969)">24 layers; width 1024; 16 heads</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="784.8" y="194.197969" transform="rotate(-0 784.8 194.197969)">14 × 14 pixel patches</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="43.2" y="254.11125" transform="rotate(-0 43.2 254.11125)">224 / 14 = 16 patches per side → 256 patch tokens + 1 CLS token → [B, 10, 257, 1024]. Side branches exclude CLS.</text>
+   </g>
+   <g id="text_13">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4338ca" x="57.6" y="306.597656" transform="rotate(-0 57.6 306.597656)">Spatial path: what does the face look like?</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="331.717969" transform="rotate(-0 57.6 331.717969)">4 learned face-part queries: [4, 1024]</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="352.597969" transform="rotate(-0 57.6 352.597969)">Attention over patches: [B, 10, 4, 256]</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="373.477969" transform="rotate(-0 57.6 373.477969)">Weighted patch features: [B, 10, 4, 1024]</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="394.357969" transform="rotate(-0 57.6 394.357969)">Mean over 10 frames and 4 queries → [B, 1024]</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="415.237969" transform="rotate(-0 57.6 415.237969)">Sum the 24 layer outputs; do not concatenate them.</text>
+   </g>
+   <g id="text_19">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4338ca" x="604.8" y="306.597656" transform="rotate(-0 604.8 306.597656)">Temporal path: how do patches change?</text>
+   </g>
+   <g id="text_20">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="331.717969" transform="rotate(-0 604.8 331.717969)">Frame-to-frame affinities from Q, K and V</text>
+   </g>
+   <g id="text_21">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="352.597969" transform="rotate(-0 604.8 352.597969)">Per-patch temporal matrices: 10 × 10</text>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="373.477969" transform="rotate(-0 604.8 373.477969)">Temporal convolution / projection + spatial convolution</text>
+   </g>
+   <g id="text_23">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="394.357969" transform="rotate(-0 604.8 394.357969)">One value per spatial patch: [B, 1, 16, 16]</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="415.237969" transform="rotate(-0 604.8 415.237969)">Flatten → [B, 256]; sum the 24 layer outputs.</text>
+   </g>
+   <g id="text_25">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4338ca" x="57.6" y="522.597656" transform="rotate(-0 57.6 522.597656)">Spatial vector y_s</text>
+   </g>
+   <g id="text_26">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="547.717969" transform="rotate(-0 57.6 547.717969)">[B, 1024] — 1024 appearance-feature values</text>
+   </g>
+   <g id="text_27">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4338ca" x="604.8" y="522.597656" transform="rotate(-0 604.8 522.597656)">Temporal vector y_t</text>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="547.717969" transform="rotate(-0 604.8 547.717969)">[B, 256] — 16 × 16 patch-response values</text>
+   </g>
+   <g id="text_29">
+    <text style="font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="43.2" y="598.263125" transform="rotate(-0 43.2 598.263125)">Both vectors are used in TWO different places below. Same length (1280), different normalization.</text>
+   </g>
+   <g id="text_30">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4338ca" x="57.6" y="641.397656" transform="rotate(-0 57.6 641.397656)">A. The authors' classification heads</text>
+   </g>
+   <g id="text_31">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="666.138047" transform="rotate(-0 57.6 666.138047)">s = LayerNorm(y_s): [B, 1024]</text>
+   </g>
+   <g id="text_32">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="687.018047" transform="rotate(-0 57.6 687.018047)">t = LayerNorm(y_t): [B, 256]</text>
+   </g>
+   <g id="text_33">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="707.898047" transform="rotate(-0 57.6 707.898047)">Spatial head: Linear(1024 → 2)</text>
+   </g>
+   <g id="text_34">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="728.778047" transform="rotate(-0 57.6 728.778047)">Temporal head: Linear(256 → 2)</text>
+   </g>
+   <g id="text_35">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="749.658047" transform="rotate(-0 57.6 749.658047)">Fusion input: concat(s, t) → [B, 1280]</text>
+   </g>
+   <g id="text_36">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="770.538047" transform="rotate(-0 57.6 770.538047)">Fusion head: Linear(1280 → 2)</text>
+   </g>
+   <g id="text_37">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="791.418047" transform="rotate(-0 57.6 791.418047)">Each head outputs [REAL logit, FAKE logit].</text>
+   </g>
+   <g id="text_38">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f766e" x="604.8" y="641.397656" transform="rotate(-0 604.8 641.397656)">B. Our quality-shift read-out</text>
+   </g>
+   <g id="text_39">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="666.138047" transform="rotate(-0 604.8 666.138047)">u = concat(y_s, y_t) → [B, 1280]</text>
+   </g>
+   <g id="text_40">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="687.018047" transform="rotate(-0 604.8 687.018047)">Join RAW features first (before the head LayerNorms).</text>
+   </g>
+   <g id="text_41">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="707.898047" transform="rotate(-0 604.8 707.898047)">Standardize with fitted mean and standard deviation:</text>
+   </g>
+   <g id="text_42">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="728.778047" transform="rotate(-0 604.8 728.778047)">u_std = (u − mean) / std   → [B, 1280]</text>
+   </g>
+   <g id="text_43">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="749.658047" transform="rotate(-0 604.8 749.658047)">G = u_std @ W.T + b      → [B, 3]</text>
+   </g>
+   <g id="text_44">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="770.538047" transform="rotate(-0 604.8 770.538047)">W: [3, 1280]; b: [3]</text>
+   </g>
+   <g id="text_45">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="791.418047" transform="rotate(-0 604.8 791.418047)">Three predicted shifts: spatial, temporal, fusion.</text>
+   </g>
+   <g id="text_46">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f766e" x="57.6" y="893.397656" transform="rotate(-0 57.6 893.397656)">Correct the logits, then make ONE DFD score</text>
+   </g>
+   <g id="text_47">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="918.517969" transform="rotate(-0 57.6 918.517969)">For each head: d = FAKE logit − REAL logit. Stack the three differences → D: [B, 3].</text>
+   </g>
+   <g id="text_48">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="939.397969" transform="rotate(-0 57.6 939.397969)">D_corrected = D − G  → [B, 3]     → sigmoid per head → mean of 3 probabilities → [B].</text>
+   </g>
+   <g id="text_49">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="960.277969" transform="rotate(-0 57.6 960.277969)">Mean over the face's clips → p_dfd: ONE scalar. Live default: 8 clips per face, processed in batches.</text>
+   </g>
+   <g id="text_50">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="981.157969" transform="rotate(-0 57.6 981.157969)">The live combiner receives this corrected score. The blur-probe strict score is not a combiner input.</text>
+   </g>
+   <g id="text_51">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="57.6" y="1055.397656" transform="rotate(-0 57.6 1055.397656)">Concatenate means append the numbers</text>
+   </g>
+   <g id="text_52">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="1080.517969" transform="rotate(-0 57.6 1080.517969)">Example: [s1, s2, s3] and [t1, t2] → [s1, s2, s3, t1, t2]. It is not addition or averaging.</text>
+   </g>
+   <g id="text_53">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="1101.397969" transform="rotate(-0 57.6 1101.397969)">Here: 1024 + 256 = 1280. Four queries are pooled, not concatenated into a 4096-vector.</text>
+   </g>
+   <g id="text_54">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="43.2" y="1164.91125" transform="rotate(-0 43.2 1164.91125)">Papers: DFD-FCG — Han et al., CVPR 2025; CLIP — Radford et al., ICML 2021.</text>
+   </g>
+   <g id="text_55">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="43.2" y="1190.11125" transform="rotate(-0 43.2 1190.11125)">Exact implementation: upstream src/model/clip/svl.py; qa/engine.py; service/app/pipeline.py; service/app/model.json.</text>
+   </g>
+   <g id="text_56">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="43.2" y="1215.31125" transform="rotate(-0 43.2 1215.31125)">Important: 256 is the patch-grid size, not the number of frames. CLIP's final text-aligned projection is not used here.</text>
+   </g>
+   <g id="text_57">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="43.2" y="1243.035313" transform="rotate(-0 43.2 1243.035313)">Roshan Raj · DFD-FCG extension · Dimensions checked against the implementation</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p9693e40851">
+   <rect x="0" y="0" width="1152" height="1274.4"/>
+  </clipPath>
+ </defs>
+</svg>

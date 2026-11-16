@@ -1,8 +1,30 @@
 # Viva guide: architecture, contribution and completed work
 
-The opening sections explain the live architecture, distinguish the research
-contribution from inherited work, and record the extra work that shipped or failed
-its replacement rule. Detailed evidence and implementation notes are expandable.
+The guide starts with the live architecture, then explains every tensor shape,
+the two DFD feature concatenations and the final five-score fusion. It includes
+English and easy Hinglish recaps, four primary paper links, a viva script, and
+downloadable diagrams. Novelty and extra work distinguish inherited methods,
+our contributions, shipped changes and experiments that failed release rules.
+The original research figures remain in the final research section.
+
+## Architecture diagrams
+
+`src/TensorArchitecture.tsx` provides the diagram selector, enlargement control,
+searchable shape explanations, papers and downloads. Regenerate the two SVGs,
+two PNGs and two-page PDF with Matplotlib from the repository root:
+
+```sh
+python scripts/draw_viva_architecture.py
+```
+
+Dimensions were checked against the authors' `src/model/clip/svl.py`,
+`qa/engine.py`, `service/app/gend_live.py`, and the stored read-outs. In particular:
+
+- DFD heads concatenate LayerNorm outputs; our correction concatenates raw
+  1024 + 256 features before its own fitted standardization.
+- GenD normalizes 1024 features with L2 normalization before its head/read-out.
+- The deployed PE path resizes inputs to 224 despite the backbone's 336 name.
+- Final fusion uses five score logits, not a concatenation of model embeddings.
 
 ## Source of truth
 
