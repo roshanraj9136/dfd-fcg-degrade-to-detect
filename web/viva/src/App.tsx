@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import ensemble from "./ensemble.json";
 import retrain from "./retrain.json";
 import scores from "./scores.json";
-import { BlurTestFig, FixFig, FusionArchFig, HeroFig, ModelArchFig, ScoreStrips } from "./figs";
-import type { MemberBox } from "./figs";
+import { BlurTestFig, FixFig, HeroFig, ModelArchFig, ScoreStrips } from "./figs";
+import { DeploymentFlow, ExtraWork, LiveArchitecture, Source } from "./Evidence";
 
 const LINKS = {
   checker: "https://dfd-fcg-degrade-to-detect.vercel.app",
@@ -14,8 +14,8 @@ const LINKS = {
 };
 
 const NAV: [string, string][] = [
-  ["story", "In short"], ["model", "Spatial + temporal"], ["problem", "Problem"], ["cause", "Cause"], ["heatmap", "Heatmap"],
-  ["fix", "My fix"], ["final", "Final checker"], ["proof", "Why trust it"], ["novelty", "Novelty"], ["questions", "Questions"], ["script", "Script"],
+  ["story", "Overview"], ["final", "Architecture"], ["novelty", "Novelty"], ["extra", "Extra work"],
+  ["model", "Inside DFD-FCG"], ["fix", "Self-calibration"], ["proof", "Evidence"], ["questions", "Questions"], ["script", "Script"],
 ];
 
 /* ------------------------------------------------------------------ data (all numbers come from these files) */
@@ -50,14 +50,15 @@ export default function App() {
       <main className="mx-auto max-w-6xl px-4 sm:px-5">
         <Hero />
         <Story />
+        <Final />
+        <Novelty />
+        <ExtraWork />
         <Model />
         <Problem />
         <Cause />
         <Heatmap />
         <Fix />
-        <Final />
         <Proof />
-        <Novelty />
         <Questions />
         <Script />
       </main>
@@ -83,10 +84,10 @@ function Header() {
         <nav className="hidden gap-0.5 xl:flex">
           {NAV.map(([id, label]) => <a key={id} href={`#${id}`} className="whitespace-nowrap rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900">{label}</a>)}
         </nav>
-        <button className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm xl:hidden" onClick={() => setOpen(!open)}>Sections</button>
+        <button aria-expanded={open} aria-controls="section-menu" className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm xl:hidden" onClick={() => setOpen(!open)}>Sections</button>
       </div>
       {open && (
-        <nav className="grid grid-cols-2 gap-1 border-t border-slate-200 px-5 py-3 xl:hidden">
+        <nav id="section-menu" className="grid grid-cols-2 gap-1 border-t border-slate-200 px-5 py-3 xl:hidden">
           {NAV.map(([id, label]) => <a key={id} href={`#${id}`} onClick={() => setOpen(false)} className="rounded-lg px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100">{label}</a>)}
         </nav>
       )}
@@ -195,12 +196,13 @@ function Hero() {
         </h1>
         <p className="mt-4 text-lg text-slate-600">
           A top deepfake detector (DFD-FCG, CVPR 2025) calls <b className="text-slate-800">blurry real videos fake</b>. I measured it, found
-          the cause inside the model, fixed it <b className="text-slate-800">without retraining</b>, showed the fix works on a second detector,
-          and built a free public checker that combines <b className="text-slate-800">3 detectors</b> into one REAL or FAKE answer.
+          how its evidence changes, and fitted a small correction <b className="text-slate-800">without retraining DFD-FCG</b>.
+          I then adapted GenD and built a checker that combines <b className="text-slate-800">5 scores from 3 networks</b> into one REAL or FAKE answer.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <a className="btn-primary" href={LINKS.checker}>Try the live checker</a>
+          <a className="btn-primary" href="#final">Understand the architecture</a>
           <a className="btn-ghost" href="#novelty">What is new</a>
+          <a className="btn-ghost" href="#extra">Extra work completed</a>
         </div>
       </div>
       <Card className="p-4"><HeroFig /></Card>
@@ -214,23 +216,23 @@ function Story() {
       <div className="grid gap-4 md:grid-cols-4">
         <Big k="1 · Problem" tone="fake" v="63%" text="of real test videos called FAKE under strong blur (3% on clean). The paper's AUROC still looks fine." />
         <Big k="2 · Cause" v="+1.44 vs −0.17" text="A 2-pixel blur adds fake evidence to real faces, almost none to fakes. The model reads fine detail as “real”." />
-        <Big k="3 · My fix" tone="brand" v="22.5% → 8.7%" text="real videos called FAKE on damaged video, with one small read-out. Nothing retrained." />
+        <Big k="3 · My fix" tone="brand" v="22.5% → 8.7%" text="false alarms on damaged video with a fitted read-out. DFD-FCG stays frozen; fewer fakes are also caught." />
         <Big k="4 · Final checker" tone="real" v={<>{pc(CK.overall_acc_original)} → {pc(CK.overall_acc)}</>}
-          text={<>correct on {CK.overall_videos} unseen test videos: 3 detectors, each bias-corrected, combined into one answer.</>} />
+          text={<>published accuracy on {CK.overall_videos} videos without added damage: DFD-FCG + self-calibration → five-score fusion.</>} />
       </div>
       <Card className="mt-4">
         <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Words I use</div>
         <dl className="mt-3 grid gap-x-8 gap-y-2 text-sm md:grid-cols-3">
           {[
-            ["Fake score", "the model's probability that a video is fake (0–1). 0.5 or more = FAKE."],
+            ["Fake score", "a model estimate from 0 to 1, not a guarantee. 0.5 or more = FAKE."],
             ["False alarm", "a real video called FAKE."],
             ["Fakes caught", "the share of deepfakes called FAKE."],
             ["Balanced accuracy", "average of “reals called REAL” and “fakes called FAKE”, so both count equally."],
             ["AUROC", "chance a random fake scores above a random real. Ignores the 0.5 line. 0.5 = coin flip."],
-            ["Damage", "blur, resizing, compression, noise, colour changes (the authors' 7 types, 5 levels)."],
+            ["Damage", "7 degradation types. The study tests 13 damaged conditions, plus clean and a re-encode control."],
             ["Spatial", "looking at one frame: texture, edges, eyes, lips."],
             ["Temporal", "looking at how the face changes over several frames: flicker, unnatural motion."],
-            ["Self-calibration", "my add-on: removes the part of the fake score that comes only from low quality."],
+            ["Self-calibration", "a fitted add-on that estimates and subtracts the score shift associated with low quality."],
           ].map(([a, b]) => <div key={a}><dt className="font-semibold text-slate-900">{a}</dt><dd className="text-slate-600">{b}</dd></div>)}
         </dl>
       </Card>
@@ -254,12 +256,12 @@ function Model() {
           <p className="mt-1 text-sm text-slate-600">4 learned queries look at eyes, nose, lips and skin on each frame's 16×16 patches: blending edges, odd texture.</p></Card>
         <Card><div className="text-xs font-bold uppercase tracking-wider text-brand">Temporal head</div>
           <div className="mt-1 font-bold text-slate-900">“Does the face move naturally?”</div>
-          <p className="mt-1 text-sm text-slate-600">The same face parts tracked over the 10 frames: flicker, jitter, lips that don't move like real lips.</p></Card>
+          <p className="mt-1 text-sm text-slate-600">Reads how patch features change over 10 frames. It can use temporal patterns; it does not explicitly measure lip-sync or check audio.</p></Card>
         <Card><div className="text-xs font-bold uppercase tracking-wider text-brand">Fusion head</div>
           <div className="mt-1 font-bold text-slate-900">“Both together”</div>
-          <p className="mt-1 text-sm text-slate-600">Combines the two. Final score = average of the three heads. My add-on sits after them, before the 0.5 line.</p></Card>
+          <p className="mt-1 text-sm text-slate-600">Combines both feature vectors. Convert each corrected head logit to a probability, then average. In the live checker this is one of five combiner inputs.</p></Card>
       </div>
-      <div className="mt-4"><Fig caption="Grey = authors' model, unchanged. Blue = my add-on. d_s, d_t, d_a: spatial, temporal and fused head scores. g: the fake evidence predicted to come only from low quality.">
+      <div className="mt-4"><Fig caption="Grey = authors' model, unchanged. Blue = our additions. d_s, d_t, d_a are head logits; g is an estimated quality-related shift. Sigmoid converts each corrected logit to a probability before averaging. This diagram is the DFD-FCG branch only.">
         <ModelArchFig />
       </Fig></div>
       <h3 className="mt-8 text-lg font-bold text-slate-900">Why both views matter (my measurement, clean FF++ test videos)</h3>
@@ -295,7 +297,7 @@ function Problem() {
       </Fig>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <Big k="What the paper sees" v="AUROC 0.999 → 0.946" text="clean → average of 13 damaged versions. Looks robust." />
-        <Big k="What a user gets" tone="fake" v="2.9% → 22.5%" text="false alarms, clean → the same 13 damaged versions. Strong blur 63%, strong JPEG 59%, strong H.264 33%." />
+        <Big k="What a user gets" tone="fake" v="2.9% → 22.5%" text="false alarms, clean → the same 13 damaged versions. Strong blur 63%, strong down/up-sampling 59%, strong H.264 33%." />
       </div>
       <Say>The paper's numbers are correct, but AUROC only checks the order of scores. At the model's own 0.5 line, strong blur turns 63% of
         real videos into “fakes”.</Say>
@@ -313,11 +315,10 @@ function Cause() {
           The blur reaction alone separates real from fake on clean video (AUROC 0.992).</Card>
         <Card><b className="text-slate-900">Damage removes that detail.</b> Blur, resizing and compression wipe it out, so real videos lose their
           “proof” and drift to FAKE. Fakes have less detail to lose.</Card>
-        <Card><b className="text-slate-900">Measured exactly, not guessed.</b> I split every head score into 240 pieces (CLIP layer × face part) that add
-          up to the real score within 0.0000003 on all 5,976 clips, then compared clean and damaged copies.</Card>
+        <Card><b className="text-slate-900">Exact score accounting.</b> There are 240 terms across the three heads: 96 spatial, 24 temporal and 120 fused.
+          Each head's terms plus its constant reconstruct its logit within 0.0000003 on 5,976 clips. This measures where scores shift; the fine-detail explanation is an interpretation of those observations.</Card>
       </div>
-      <Say>A real face reacts to a tiny blur, a fake one doesn't. So the model's “real” evidence is fine detail, and that is exactly what
-        low quality destroys.</Say>
+      <Say>In this study, real faces reacted much more to a small blur on average. That supports the explanation that DFD-FCG uses fine detail as evidence of “real”. It is not a rule that every real or fake video must follow.</Say>
     </Section>
   );
 }
@@ -339,8 +340,8 @@ function Heatmap() {
         </Card>
         <div className="grid gap-3">
           <Card><div className="font-bold text-slate-900">How it is made</div>
-            <p className="mt-1 text-sm text-slate-600">The spatial head is linear after a LayerNorm, so its score is an exact sum over the 16×16 image patches.
-              Each square is one patch's share of the score. The squares add up to the head's real score; nothing is approximated.</p></Card>
+            <p className="mt-1 text-sm text-slate-600">For a fixed input, the LayerNorm and linear head can be decomposed into patch contributions.
+              The patch terms <b>plus a constant</b> reconstruct the spatial head's raw logit, not the final probability. The displayed overlay averages contributions over the sampled clips.</p></Card>
           <Card><div className="font-bold text-slate-900">Proof that it is meaningful</div>
             <p className="mt-1 text-sm text-slate-600">From the explanation pieces alone I could tell which of 4 fake methods made a video <b>77%</b> of the time,
               against <b>57%</b> from the 3 head scores and 25% by chance (79 fake videos). On clean FF++, real videos get most “real” evidence from the
@@ -350,8 +351,7 @@ function Heatmap() {
               detector has no heatmap. Use it to show <i>where</i>, not as proof that a video is fake.</p></Card>
         </div>
       </div>
-      <Say>The heatmap is exact: the head is linear, so I can split its score over the face patches and the pieces add back to the score.
-        Grad-CAM-style maps only approximate. Mine was precise enough to identify the fake method 77% of the time.</Say>
+      <Say>The patch contributions plus a constant reconstruct DFD-FCG's spatial logit. The heatmap helps inspect that branch; it is not an explanation of the complete five-score verdict or proof of manipulation.</Say>
     </Section>
   );
 }
@@ -363,9 +363,9 @@ function Fix() {
         damage added, and subtracts it.</>}>
       <Fig><FixFig /></Fig>
       <ul className="mt-4 grid gap-2 text-sm text-slate-600 md:grid-cols-2">
-        <li>• <b className="text-slate-900">Ridge regression</b> from the heads' 1,280 feature numbers to 3 shifts (spatial, temporal, fused). Under a millisecond.</li>
+        <li>• <b className="text-slate-900">Ridge regression</b> from the heads' 1,280 feature numbers to 3 shifts (spatial, temporal, fused). The read-out is fitted; the detector weights stay frozen.</li>
         <li>• <b className="text-slate-900">Target from real videos only</b>: how much real scores moved under damage. Real and fake clips get the same target,
-          so it cannot learn “push fakes down”.</li>
+          for each condition. It is not trained to predict real/fake labels, but its correction can still lower fake scores.</li>
         <li>• <b className="text-slate-900">Fitted on 49 training videos</b> (30 real, 19 fake) at damage levels 2 and 4; tested on 130 test videos at levels 1, 3, 5.</li>
         <li>• <b className="text-slate-900">Tested on damage it never saw</b>: each damage type is left out of fitting in turn. No quality label needed.</li>
       </ul>
@@ -380,18 +380,13 @@ function Fix() {
         ]} note={<>Last row is the cost: fewer fakes are caught at the default line. Noise (which hides fakes) is not fixed. All rows:
           {" "}<a className="text-brand underline" href={LINKS.tables}>results/tables.md</a>.</>} />
       </div>
-      <Say>I don't change the detector. One linear read-out estimates, from its own features, how much fake evidence came only from poor quality,
+      <Say>I keep the detector weights frozen. A fitted linear read-out estimates the score shift associated with poor quality from the detector's own features,
         and subtracts it. False alarms on damaged video drop from 22.5% to 8.7%, even for damage types it never saw.</Say>
     </Section>
   );
 }
 
 /* ------------------------------------------------------------------ the final, live system */
-const MB: Record<string, MemberBox> = {
-  dfd: { name: "DFD-FCG (CVPR 2025)", sub: "spatial + temporal · 8 clips of 10 frames per face", tag: "VIDEO", mine: false, sc: true },
-  pe: { name: "GenD-PE (WACV 2026)", sub: "spatial · released weights · 24 single frames", tag: "FRAME", mine: false, sc: true },
-  pe_ft: { name: "GenD-PE, retrained by me", sub: "spatial · LayerNorms fine-tuned on 2025–26 data", tag: "FRAME", mine: true, sc: true },
-};
 const SETS: [string, string, "bacc" | "caught"][] = [
   ["celebdf", "Celeb-DF v2 (2020)", "bacc"], ["social", "Social-media deepfakes (2026)", "bacc"],
   ["mavos", "MAVOS-DD, methods seen in training (2025)", "bacc"], ["mavos_open", "MAVOS-DD, methods never seen (2025)", "bacc"],
@@ -401,47 +396,56 @@ const SETS: [string, string, "bacc" | "caught"][] = [
 
 function Final() {
   const d = EN.decision;
-  const nets = Array.from(new Set(EN.members.map((m) => (m.endsWith("_sc") ? m.slice(0, -3) : m))));
-  const boxes = nets.map((n) => MB[n] ?? { name: n, sub: "", tag: "", mine: false, sc: false });
   const b = CK.bands;
   return (
-    <Section id="final" n="The final checker (live)" tone="brand" title="3 detectors, each bias-corrected, one firm answer"
-      lead={<>One detector trained on 2019 fakes cannot judge 2026 videos. So the live checker runs {nets.length} detectors on the same face crops,
-        applies my self-calibration to each, and a combiner turns their scores into REAL or FAKE with a confidence number.</>}>
+    <Section id="final" n="The architecture" tone="brand" title="One video → three networks → five scores → one answer"
+      lead={<>DFD-FCG reads short video clips. Two versions of GenD-PE read individual frames: the released model and our fine-tuned model.
+        A small learned combiner brings their evidence together. Open a path below for the technical detail.</>}>
+      <LiveArchitecture />
+      <DeploymentFlow />
+      <Say>We cut out and align the faces. DFD-FCG checks appearance and changes across frames. Two GenD models check individual frames.
+        DFD-FCG gives one corrected score; each GenD gives a raw and a corrected score. That makes five scores from three networks.
+        A learned combiner gives each face a fake probability, and the most suspicious tracked face decides the video verdict.</Say>
+      <details className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+      <summary className="cursor-pointer font-semibold text-brand">Why we built this combination</summary>
+      <div className="mt-4">
       <Steps items={[
         ["Retrain DFD-FCG alone", <>On 2025–26 data: {pts(RT.decision.gain_new_sets)} points on newer fakes, but {pts(RT.decision.change_dfdc)} on DFDC.
           It failed my pre-written rule, so I did not use it.</>],
         ["Add a frame detector", <>GenD (2026) fails the same way: strong blur made it call <b>{p0(GSC["ffpp:GB_5"].raw.false_alarm)}</b> of real FF++ videos FAKE.
-          My unchanged fix cut that to <b>{p0(GSC["ffpp:GB_5"].cal.false_alarm)}</b>.</>],
-        ["Retrain GenD, combine", <>LayerNorm-only fine-tuning raised GenD's validation score 0.72 → 0.92. A combiner fitted on {EN.n_val} validation
-          videos weighs all scores. Test videos untouched until the end.</>],
+          The same recipe, fitted on GenD features, cut that to <b>{p0(GSC["ffpp:GB_5"].cal.false_alarm)}</b>, with lower fake recall.</>],
+        ["Fine-tune GenD, combine", <>Fine-tuning the LayerNorm parameters and classifier head raised validation AUROC from about 0.72 to 0.92.
+          The combiner uses {EN.n_val} validation videos. The evidence section explains the protocol's limits.</>],
       ]} />
-      <div className="mt-6"><Fig caption="Indigo = my work. Each GenD network is passed to the combiner with and without self-calibration.">
-        <FusionArchFig members={boxes} nVal={EN.n_val} />
-      </Fig></div>
+      </div>
+      </details>
       <div className="mt-6 grid gap-4 md:grid-cols-3">
-        <Big k={`All ${CK.overall_videos} test videos`} tone="real" v={<>{pc(CK.overall_acc_original)} → {pc(CK.overall_acc)}</>} text="correct answers, released DFD-FCG → live checker" />
-        <Big k="Newer fakes (2025–26)" tone="real" v={<>{pc(BASE.mean_new_bacc)} → {pc(FIN.mean_new_bacc)}</>}
-          text={<>balanced accuracy, 4 sets; 95% range of the gain {range(EN.ci95.new_sets)} points</>} />
+        <Big k={`${CK.overall_videos} videos · published comparison`} tone="real" v={<>{pc(CK.overall_acc_original)} → {pc(CK.overall_acc)}</>} text="correct answers: DFD-FCG + self-calibration → chosen five-score fusion" />
+        <Big k="Four two-class benchmarks" tone="real" v={<>{pc(BASE.mean_new_bacc)} → {pc(FIN.mean_new_bacc)}</>}
+          text={<>mean balanced accuracy: Celeb-DF, social media and two MAVOS splits; 95% gain range {range(EN.ci95.new_sets)} points</>} />
         <Big k="Old FF++ (2019)" tone="fake" v={<>{pc(BASE.ffpp?.bacc)} → {pc(FIN.ffpp?.bacc)}</>}
           text={<>the price: false alarms on clean FF++ reals {p0(BASE["ffpp:clean"]?.false_alarm)} → {p0(FIN["ffpp:clean"]?.false_alarm)}</>} />
       </div>
-      <div className="mt-6">
-        <Table head={["Held-out test set", "Released DFD-FCG → live checker"]}
+      <details className="mt-6">
+        <summary className="mb-3 cursor-pointer font-semibold text-brand">See the results for each dataset</summary>
+        <Table head={["Test set", "DFD-FCG + self-cal. → chosen fusion"]}
           rows={SETS.map(([g, name, k]) => [name, <Ch a={BASE[g]?.[k]} b={FIN[g]?.[k]} />])}
-          note="Balanced accuracy at the 0.5 line; sets with only fakes show the share caught. No test video was used for training, checkpoint choice, the combiner or choosing detectors." />
-      </div>
+          note="Balanced accuracy at 0.5; fake-only sets show recall, not two-class accuracy. FF++, FaceShifter and DFDC rows average clean / strong blur / heavy compression. The 705-video headline counts unique videos without added damage; FaceShifter reuses FF++ reals. These are different summaries." />
+      </details>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <Card><div className="font-bold text-slate-900">What the confidence number means</div>
           <p className="mt-1 text-sm text-slate-600">On the {CK.overall_videos} test videos: answers at 80%+ confidence were right {pc(b[2]?.acc)} of the time ({p0(b[2]?.share)} of answers),
-            65–80% right {pc(b[1]?.acc)}, under 65% right {pc(b[0]?.acc)}. Low confidence means “be careful”.</p></Card>
+            65–80% right {pc(b[1]?.acc)}, under 65% right {pc(b[0]?.acc)}. These are observed bands, not proof that the confidence is calibrated for new uploads.</p></Card>
         <Card className="border-amber-200 bg-amber-50"><div className="font-bold text-amber-800">Honest: my own rule was not met</div>
           <p className="mt-1 text-sm text-slate-700">Rule written before testing: switch only if newer sets gain ≥ 5 points and FF++ and DFDC lose ≤ 2.
             Measured: newer {pts(d.gain_new_sets)}, FF++ {pts(d.change_ffpp)}, DFDC {pts(d.change_dfdc)}. I deployed it anyway because people upload modern
             videos, and I report the FF++ loss.</p></Card>
       </div>
-      <Say>The live checker combines three detectors, each corrected by my self-calibration. On {CK.overall_videos} unseen videos it is right
-        {" "}{pc(CK.overall_acc)} of the time against {pc(CK.overall_acc_original)} for the original model. It is a trade-off: on 2019 FF++ videos it
+      <p className="mt-4 text-sm text-slate-600"><b>Read the comparison correctly:</b> its DFD baseline already includes our self-calibration.
+        The FF++ / FaceShifter / DFDC results use cached two-clip DFD features; production defaults to eight clips. These published offline results are not a fresh end-to-end measurement of every current upload setting.
+        Sources: <Source path="service/ens/data.py">score loading and clip protocol</Source>, <Source path="results/ensemble/results.json">results</Source> and <Source path="results/ensemble/PLAN.md">deployment decision</Source>.</p>
+      <Say>The live checker combines five scores from three networks. In the published {CK.overall_videos}-video comparison, the chosen fusion reaches
+        {" "}{pc(CK.overall_acc)} accuracy against {pc(CK.overall_acc_original)} for DFD-FCG with self-calibration. It is a trade-off: on 2019 FF++ videos it
         loses {pts(-d.change_ffpp).replace("+", "")} points, which broke my own pre-written rule, and I say so.</Say>
     </Section>
   );
@@ -450,19 +454,19 @@ function Final() {
 /* ------------------------------------------------------------------ why the results can be trusted */
 function Proof() {
   const items: [string, ReactNode][] = [
-    ["Test videos never touched", <>Training, checkpoint choice, the read-out, the combiner and the choice of detectors used only training and {EN.n_val} validation
-      videos. Test videos were scored once, at the end.</>],
+    ["Separate fit and evaluation videos", <>The read-out uses 49 train-split videos. The deployed combiner uses {EN.n_val} validation videos.
+      The early study included test-pilot choices, and later comparisons reused known benchmarks; see the qualifications below.</>],
     ["Rules written before testing", "Switch rules were saved in results/ensemble/PLAN.md before any test run. Both failures (round 1 and the FF++ loss) are reported."],
     ["Unseen damage", "The fix is tested on damage types left out of fitting. A 5-fold check over test identities gives the same picture (7.8% false alarms)."],
     ["Beats simple baselines", "Same test, unseen damage: Platt re-calibration 12.2% false alarms, quality from the face crop 15.1%, blur test 18.1%, mine 8.7%."],
-    ["Exact explanation", "The 240 pieces add up to the model's own score within 0.0000003 on every one of 5,976 clips. That is checkable, a heatmap guess is not."],
-    ["Works on a second model", <>Same recipe on GenD, no change: strong-blur false alarms {p0(GSC["ffpp:GB_5"].raw.false_alarm)} → {p0(GSC["ffpp:GB_5"].cal.false_alarm)}.</>],
-    ["Live = offline", "Parity tests check that the website's code gives the same scores as the evaluation code (tests/check_fusion_live.py)."],
+    ["Exact explanation", "The 240 terms across all heads, plus each head's constant, reconstruct their raw logits within 0.0000003 on 5,976 clips. This is score accounting, not causal proof."],
+    ["Transfer to GenD-PE", <>The same recipe, fitted separately on GenD features: strong-blur false alarms {p0(GSC["ffpp:GB_5"].raw.false_alarm)} → {p0(GSC["ffpp:GB_5"].cal.false_alarm)}. Fake recall also falls, so this is a trade-off.</>],
+    ["Implementation parity", "The recorded parity checks matched live and offline scoring on selected examples with matched inputs. They do not replace a full-video accuracy evaluation under all production settings (tests/check_fusion_live.py)."],
     ["Uncertainty shown", <>Bootstrap 95% ranges: gain on newer sets {range(EN.ci95.new_sets)} points. Single seed and 50–120 videos per set, so small differences are noise.</>],
   ];
   return (
     <Section id="proof" n="Why trust it" tone="green" title="How I know the results are correct"
-      lead="Professors will ask “did you cheat by looking at the test set?” These are the checks, each one with its evidence.">
+      lead="Separate what the measurements establish from what still needs a fresh, independent evaluation.">
       <div className="grid gap-3 md:grid-cols-2">
         {items.map(([t, x]) => (
           <div key={t} className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -472,10 +476,19 @@ function Proof() {
         ))}
       </div>
       <Card className="mt-4 border-amber-200 bg-amber-50">
+        <div className="font-bold text-amber-800">Protocol qualifications to state clearly</div>
+        <ul className="mt-2 space-y-2 text-sm text-slate-700">
+          <li>The original ridge strength (α = 1000) and strict-mode weight (0.5) were chosen after a pilot on part of the test data. The identity cross-validation check also uses test-split data. Do not describe the whole project as untouched test evaluation.</li>
+          <li>The original protocol used Counterfactual groups 25–30 for validation despite a broader reservation of groups 25–36. Later comparisons exclude all synth validation rows; that does not undo the earlier checkpoint selection.</li>
+          <li>CLIP and paired-training follow-ups reuse the published benchmarks. Their frozen validation selections are documented, but the subsequent tests are not new blind holdouts.</li>
+        </ul>
+        <p className="mt-3 text-sm"><Source path="README.md#limitations">Original study limitations</Source> · <Source path="results/reliability_followup.md">Split clarification and follow-up record</Source></p>
+      </Card>
+      <Card className="mt-4 border-amber-200 bg-amber-50">
         <div className="font-bold text-amber-800">Where it still fails (say it before they ask)</div>
         <ul className="mt-2 grid gap-1.5 text-sm text-slate-700 md:grid-cols-2">
           <li>• DFDC, a dataset none of the detectors trained on: {pc(FIN.dfdc?.bacc)} balanced accuracy.</li>
-          <li>• Clean 2019 FF++ reals: {p0(FIN["ffpp:clean"]?.false_alarm)} false alarms (released model {p0(BASE["ffpp:clean"]?.false_alarm)}).</li>
+          <li>• Clean 2019 FF++ reals: {p0(FIN["ffpp:clean"]?.false_alarm)} false alarms (DFD-FCG + self-calibration: {p0(BASE["ffpp:clean"]?.false_alarm)}).</li>
           <li>• Fully AI-made people: {pc(FIN.sf?.caught)} caught. Lip-sync-only fakes: no audio detector.</li>
           <li>• Noise hides fakes, and heavy blur removes the clues every detector needs.</li>
         </ul>
@@ -488,18 +501,18 @@ const NEW: [string, ReactNode, string, ReactNode][] = [
   ["A failure the paper does not report", "63% of real videos called FAKE under strong blur, while AUROC still reads 0.905.",
     "Everyone knows compression hurts detectors.",
     "In general, yes. This paper reports the model as robust using AUROC. I show with the authors' own damage code that its decisions are not, and by how much."],
-  ["The cause, measured exactly in both views", "A 2-px blur adds +1.44 fake evidence to real faces, −0.17 to fakes; spatial and temporal heads both affected. Exact split on 5,976 clips.",
+  ["Evidence of the mechanism", "A 2-px blur changes the fused logit by +1.44 on real faces and −0.17 on fakes on average. Exact attribution extends the earlier two-video work to 5,976 clips.",
     "Explanation maps are unreliable.",
-    "Heatmaps like Grad-CAM approximate. Mine is exact algebra: the heads are linear after a LayerNorm, so the score splits into pieces that add back to it."],
-  ["A fix without retraining", "False alarms 22.5% → 8.7% on unseen damage types; mixed AUROC 0.920 → 0.951.",
+    "The terms plus a constant reconstruct each head logit. That establishes mathematical fidelity to the score, not that the highlighted pixels caused a forgery."],
+  ["A fitted correction with a frozen detector", "False alarms 22.5% → 8.7% on unseen damage types; mixed AUROC 0.920 → 0.951. Fake recall at 0.5 falls from 87.9% to 78.1%.",
     "Isn't this just moving the threshold?",
-    "No. A threshold or Platt scaling shifts every video equally (12.2%). My read-out shifts each video by its own amount, from its own features."],
-  ["The problem and the fix are general",
-    <>GenD (WACV 2026) collapses too: {p0(GSC["ffpp:GB_5"].raw.false_alarm)} false alarms under blur → {p0(GSC["ffpp:GB_5"].cal.false_alarm)} with my unchanged fix.</>,
+    "A global threshold or Platt mapping applies the same score-only rule to every video. Our read-out uses each video's internal features to estimate its own correction. Ridge regression itself is standard."],
+  ["Transfer evidence on a second detector family",
+    <>Released GenD-PE: {pc(GSC["ffpp:GB_5"].raw.false_alarm)} → {pc(GSC["ffpp:GB_5"].cal.false_alarm)} false alarms under blur; recall {pc(GSC["ffpp:GB_5"].raw.caught)} → {pc(GSC["ffpp:GB_5"].cal.caught)}.</>,
     "Your fix is tailored to DFD-FCG.",
-    "It needs only a detector's own feature vector and its score. I applied it to GenD's class token with no change to the method."],
-  ["A tested public checker from 3 corrected detectors",
-    <>{pc(CK.overall_acc_original)} → {pc(CK.overall_acc)} correct on {CK.overall_videos} unseen videos; newer sets {pc(BASE.mean_new_bacc)} → {pc(FIN.mean_new_bacc)}.</>,
+    "The same fitting recipe works on GenD's class token with a separately fitted read-out. That is evidence of transfer to GenD, not proof it works on every detector."],
+  ["Engineering: an evaluated public checker",
+    <>{pc(CK.overall_acc_original)} → {pc(CK.overall_acc)} correct in the {CK.overall_videos}-video comparison, from self-calibrated DFD-FCG to the chosen fusion.</>,
     "Ensembles always help; you tuned on the test set.",
     <>The combiner was fitted and chosen on {EN.n_val} validation videos only, and the rule was written before testing. It is not free: FF++ lost
       {" "}{pts(-EN.decision.change_ffpp).replace("+", "")} points, and I report that.</>],
@@ -507,9 +520,23 @@ const NEW: [string, ReactNode, string, ReactNode][] = [
 
 function Novelty() {
   return (
-    <Section id="novelty" n="Defend the novelty" tone="brand" title="What is new, the proof, and what to say when they push back"
-      lead={<>Open with: “The paper says DFD-FCG is robust because AUROC stays high. I showed its decisions fail on low-quality real videos,
-        found why inside the model, fixed it without retraining, showed the fix works on a second detector, and built a tested public checker.”</>}>
+    <Section id="novelty" n="The contribution" tone="brand" title="What is new in our work?"
+      lead={<>We studied a practical failure: a real face can be called fake just because the video quality drops. Our main contribution is measuring that failure,
+        tracing the score changes inside the model, and fitting a feature-based correction while keeping the detector frozen.</>}>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card><h3 className="font-bold text-slate-900">What we started with</h3>
+          <p className="mt-2 text-sm text-slate-600">The authors supplied DFD-FCG, GenD, checkpoints and degradation tools. Our earlier project already had exact attribution on two videos. We do not claim these as newly invented here.</p></Card>
+        <Card className="border-indigo-200 bg-brand-soft"><h3 className="font-bold text-indigo-900">What this study adds</h3>
+          <p className="mt-2 text-sm text-slate-700">A larger threshold-level robustness study, exact analysis of how evidence changes under damage, a fitted quality correction, and transfer experiments on GenD. The correction reduces false alarms, with a measured recall cost.</p></Card>
+        <Card><h3 className="font-bold text-slate-900">What we built around it</h3>
+          <p className="mt-2 text-sm text-slate-600">A GenD fine-tune, a five-score combiner, multi-face video processing, an explanatory checker, reliability checks and documented follow-up experiments. These are project and engineering contributions.</p></Card>
+      </div>
+      <Say>Our contribution is to separate “looks fake” from “looks low quality” in the detector's decision. We measured the problem, traced how the evidence changes,
+        and fitted a small correction from the model's own features. Then we tested transfer and built a usable checker around it. We did not invent CLIP, GenD, ridge regression or ensembles.</Say>
+      <p className="mt-4 text-sm text-slate-600">This describes the contribution relative to the base models and our earlier project. A claim of being the first in the literature would need a broader literature review.
+        Sources: <Source path="qa/engine.py">attribution extension</Source>, <Source path="qa/methods.py">correction</Source>, <Source path="results/tables.md">study results</Source>.</p>
+      <details className="mt-5">
+      <summary className="mb-3 cursor-pointer font-semibold text-brand">Evidence and answers for a deeper viva discussion</summary>
       <Card className="overflow-x-auto p-0">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead>
@@ -546,6 +573,7 @@ function Novelty() {
           </ul>
         </Card>
       </div>
+      </details>
     </Section>
   );
 }
@@ -556,18 +584,22 @@ const QA: [string, ReactNode][] = [
   ["What is the difference between spatial and temporal?",
     "Spatial looks at one frame at a time (texture, edges, eyes, lips). Temporal looks at how the face changes across 10 frames (flicker, unnatural motion). DFD-FCG has a head for each plus a fused head; GenD is spatial only. On FaceShifter, temporal alone catches 80%, spatial alone 40%."],
   ["Did you use heatmaps?",
-    "Yes. The checker shows one for every answer. It is the spatial head's exact split over 16×16 face patches, so the squares add up to the real score. It shows where the evidence is; it does not decide the answer."],
+    "Yes. Patch contributions plus a constant reconstruct DFD-FCG's raw spatial logit. The overlay averages those contributions over clips. It does not reconstruct the final ensemble probability or prove the location of a manipulation."],
   ["Why not simply move the threshold?",
     "The right line depends on how damaged each video is, which you don't know. One global re-calibration still gives 12.2% false alarms; my per-video read-out gives 8.7%."],
   ["Did you tune anything on the test set?",
-    <>No. The read-out is fitted on 49 training videos at damage levels 2 and 4 and tested at 1, 3 and 5, with the tested damage type left out. The combiner
-      used {EN.n_val} validation videos. Rules were written before testing.</>],
+    <>Yes, the original ridge strength and strict-mode weight followed a pilot on part of the test data. The read-out itself fits 49 train-split videos;
+      the live combiner fits {EN.n_val} validation videos. Later follow-ups reuse known benchmarks, and an earlier synth validation split has a documented qualification. We report those limits.</>],
   ["Your fix catches fewer fakes. Isn't that worse?",
     "At the 0.5 line, yes (87.9% → 78.1%). At the same false-alarm rate it catches more (71.0% vs 67.2% at 5%), and balanced accuracy and mixed AUROC go up. The released model catches many fakes partly because it calls almost every damaged video FAKE."],
   ["Why three detectors?",
-    "They look at the face differently: DFD-FCG reads 3-second clips (spatial + temporal), GenD reads single frames, and the retrained GenD knows 2025–26 fakes. Different views make different mistakes, so combining them helps."],
+    "There are three network instances from two detector families: DFD-FCG, released GenD-PE and fine-tuned GenD-PE. DFD supplies one corrected score; each GenD supplies raw and corrected scores. The five scores are combined using learned weights, not a vote."],
+  ["Does “without retraining” mean nothing was learned?",
+    "No. The self-calibration read-out is fitted using training data while the detector stays frozen. Separately, the final checker includes a GenD model whose LayerNorm parameters and classifier head were fine-tuned, plus a fitted logistic combiner."],
+  ["What extra work did you complete after the ensemble?",
+    "We deployed reliability fixes for invalid scores, tracking and shared-model sampling. We also completed reweighting, CLIP comparisons and paired PE training. None met the replacement rule, so the live model and published accuracy stayed unchanged. The detailed records and a paper draft are linked above."],
   ["Why is the final system worse on FF++?",
-    <>The retrained frame detector learned 2025–26 videos, whose real videos look different from 2019 news clips, so clean FF++ reals get
+    <>The measured issue is more false alarms on clean FF++ reals. A domain/style mismatch is a plausible explanation, not a demonstrated cause. The live system gives
       {" "}{p0(FIN["ffpp:clean"]?.false_alarm)} false alarms ({p0(BASE["ffpp:clean"]?.false_alarm)} before). A measured trade-off: {pts(EN.decision.gain_new_sets)} points on newer fakes,
       {" "}{pts(EN.decision.change_ffpp)} on FF++.</>],
   ["Why does it never say “not sure”?",
@@ -599,9 +631,9 @@ function Script() {
   const lines = [
     "DFD-FCG is a CVPR 2025 video deepfake detector. It reads a face two ways: spatially, frame by frame, and temporally, how it moves. The paper says it is robust to blur and compression because its AUROC stays high.",
     "I tested its real decisions at the 0.5 line with the authors' own damage code. Under strong blur it calls 63% of real videos fake.",
-    "An exact split of the score showed why: the model uses fine detail as proof of “real”. A 2-pixel blur adds +1.44 fake evidence to real faces and almost nothing to fakes, in both the spatial and temporal heads. The same split gives the exact heatmap the checker shows.",
-    "So I added one linear read-out that estimates, from the model's own features, how much fake evidence came only from poor quality, and subtracts it. No retraining. False alarms on damaged video drop from 22.5% to 8.7%, also for damage types it never saw.",
-    `The same fix works unchanged on a 2026 detector, GenD. The live checker combines three corrected detectors, chosen on validation videos only: it is right ${pc(CK.overall_acc)} of the time on ${CK.overall_videos} unseen videos, against ${pc(CK.overall_acc_original)} for the original. The cost is on old FF++ videos, and I report it.`,
+    "We trace how each head's evidence changes. A 2-pixel blur increases the fused logit by 1.44 on real faces, versus −0.17 on fakes on average. That supports a fine-detail bias. Our earlier attribution work is extended to all heads, patches and a larger study.",
+    "We fit a small read-out to estimate the quality-related shift and subtract it. DFD-FCG stays frozen. False alarms fall from 22.5% to 8.7% under unseen damage types, but fake recall also falls. The same recipe transfers to GenD with a separately fitted read-out.",
+    `The live checker uses three networks and five scores, including our fine-tuned GenD, with a learned combiner. The chosen fusion reaches ${pc(CK.overall_acc)} in the published ${CK.overall_videos}-video comparison, versus ${pc(CK.overall_acc_original)} for self-calibrated DFD-FCG. We report the FF++ loss and protocol limits. Later reliability fixes shipped; CLIP and paired-training experiments did not earn a model replacement.`,
   ];
   return (
     <Section id="script" n="Practise this" title="The one-minute script">

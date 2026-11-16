@@ -94,13 +94,13 @@ export function ModelArchFig() {
   const stripes = Array.from({ length: 24 }, (_, i) => 160 + i * 11);
   const taps = [2, 6, 10, 14, 18, 22];
   return (
-    <svg viewBox="0 0 1240 610" className="w-full min-w-[900px]" role="img" aria-label="DFD-FCG architecture with my two additions">
+    <svg viewBox="0 0 1240 610" className="w-full min-w-[900px]" role="img" aria-label="Inside DFD-FCG: frozen CLIP, spatial and temporal features, three corrected head logits, sigmoid then average, and a separate explanation branch">
       <Defs />
       {/* legend */}
       <rect x="16" y="14" width="16" height="16" rx="4" fill={C.panel} stroke={C.line} />
       <T x={40} y={27} size={13}>original DFD-FCG (as released by the authors)</T>
       <rect x="330" y="14" width="16" height="16" rx="4" fill={C.brandSoft} stroke={C.brand} strokeWidth="2" />
-      <T x={354} y={27} size={13} color={C.brand} w={700}>my addition (no retraining)</T>
+      <T x={354} y={27} size={13} color={C.brand} w={700}>our additions (DFD-FCG weights frozen)</T>
 
       {/* input */}
       <Box x={16} y={180} w={160} h={190} />
@@ -175,11 +175,13 @@ export function ModelArchFig() {
 
       {/* decision */}
       <Box x={1128} y={150} w={100} h={266} fill={C.panel} />
-      <T x={1178} y={240} size={13} anchor="middle">average of</T>
-      <T x={1178} y={257} size={13} anchor="middle">the 3 scores</T>
+      <T x={1178} y={222} size={12} anchor="middle">sigmoid on</T>
+      <T x={1178} y={239} size={12} anchor="middle">each logit,</T>
+      <T x={1178} y={257} size={12} anchor="middle">then average</T>
       <T x={1178} y={281} size={13} anchor="middle">→ P(fake)</T>
-      <T x={1178} y={312} size={14} w={800} color={C.ink} anchor="middle">≥ 0.5</T>
-      <T x={1178} y={331} size={14} w={800} color={C.fake} anchor="middle">= FAKE</T>
+      <T x={1178} y={312} size={12} w={700} color={C.ink} anchor="middle">DFD score</T>
+      <T x={1178} y={331} size={11} color={C.muted} anchor="middle">one input to</T>
+      <T x={1178} y={347} size={11} color={C.muted} anchor="middle">live combiner</T>
 
       {/* my additions */}
       <path d="M1104 404 V 420" stroke={C.brand} strokeWidth="2" strokeDasharray="4 4" />
@@ -199,12 +201,11 @@ export function ModelArchFig() {
       <Box x={380} y={482} w={330} h={116} fill="#fff" stroke={C.brand} sw={1.8} dash="6 5" />
       <rect x="396" y="494" width="44" height="20" rx="10" fill={C.brand} />
       <T x={418} y={508} size={11} w={800} color="#fff" anchor="middle">NEW</T>
-      <T x={448} y={509} size={15} w={800} color={C.brand}>Blur test (strict mode)</T>
-      <T x={396} y={535} size={12.5} color={C.ink}>runs the model once more on the face</T>
-      <T x={396} y={553} size={12.5} color={C.ink}>blurred by 2 px; real faces react strongly,</T>
-      <T x={396} y={571} size={12.5} color={C.ink}>fakes hardly. Strict mode also subtracts</T>
-      <T x={396} y={589} size={12.5} color={C.ink}>half of that reaction. Optional.</T>
-      <Arrow d="M710 540 H 736" color="brand" dash="5 4" />
+      <T x={448} y={509} size={15} w={800} color={C.brand}>Exact attribution</T>
+      <T x={396} y={535} size={12.5} color={C.ink}>a separate explanation of the raw logits:</T>
+      <T x={396} y={553} size={12.5} color={C.ink}>terms + constant reconstruct each head.</T>
+      <T x={396} y={571} size={12.5} color={C.ink}>The spatial terms produce the heatmap.</T>
+      <T x={396} y={589} size={12.5} color={C.muted}>This branch does not change the verdict.</T>
     </svg>
   );
 }
@@ -392,13 +393,13 @@ export function BlurTestFig() {
       <Face x={232} y={y} s={0.9} blur tint={fake ? "#f5cfae" : "#fcd9b6"} />
       <Arrow d={`M282 ${y} H 340`} />
       <T x={356} y={y - 6} size={13} color={C.text}>change in the</T>
-      <T x={356} y={y + 12} size={13} color={C.text}>fake score:</T>
+      <T x={356} y={y + 12} size={13} color={C.text}>fused logit:</T>
       <rect x={Math.min(zeroX, zeroX + v * unit)} y={y - 16} width={Math.abs(v * unit)} height="32" rx="6" fill={v > 0.5 ? C.fake : C.line} />
       <T x={zeroX + v * unit + (v >= 0 ? 10 : -10)} y={y + 6} size={20} w={800} color={v > 0.5 ? C.fake : C.ink} anchor={v >= 0 ? "start" : "end"}>{v >= 0 ? "+" : "−"}{Math.abs(v).toFixed(2)}</T>
     </g>
   );
   return (
-    <svg viewBox="0 0 900 300" className="w-full min-w-[640px]" role="img" aria-label="A 2 pixel blur raises the fake score of real faces by 1.44 and changes fakes by minus 0.17">
+    <svg viewBox="0 0 900 300" className="w-full min-w-[640px]" role="img" aria-label="A 2 pixel blur changes the fused logit by plus 1.44 for real faces and minus 0.17 for fakes on average">
       <Defs />
       <line x1={zeroX} x2={zeroX} y1={30} y2={270} stroke={C.ink} strokeWidth="1.5" />
       <T x={zeroX} y={22} size={12} color={C.muted} anchor="middle">no change</T>
@@ -464,13 +465,14 @@ export function FixFig() {
       <T x={545} y={123} size={24} w={800} color={C.brand} anchor="middle">−</T>
       <Arrow d="M571 115 H 640" />
       <Box x={644} y={78} w={160} h={74} />
-      <T x={724} y={110} size={14} w={800} color={C.ink} anchor="middle">d − g</T>
-      <T x={724} y={130} size={12.5} color={C.muted} anchor="middle">corrected scores</T>
+      <T x={724} y={100} size={13} w={800} color={C.ink} anchor="middle">d − g</T>
+      <T x={724} y={119} size={12} color={C.muted} anchor="middle">sigmoid per head</T>
+      <T x={724} y={139} size={12} color={C.muted} anchor="middle">then mean → P(fake)</T>
       <Arrow d="M806 115 H 850" />
       <Box x={854} y={78} w={136} h={74} fill={C.panel} />
       <T x={922} y={108} size={13} w={700} color={C.ink} anchor="middle">same 0.5 line</T>
       <T x={922} y={128} size={12.5} anchor="middle">REAL / FAKE</T>
-      <T x={500} y={28} size={13} color={C.muted} anchor="middle" italic>DFD-FCG itself is not changed. The add-on is 3 × 1280 weights and runs in under a millisecond.</T>
+      <T x={500} y={28} size={13} color={C.muted} anchor="middle" italic>DFD-FCG weights stay frozen. The fitted read-out has 3 × 1280 weights plus three intercepts.</T>
     </svg>
   );
 }
