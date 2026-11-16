@@ -5,6 +5,21 @@ on:
 permissions:
   contents: read
 jobs:
+  viva-guide:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/viva/package-lock.json
+      - run: python scripts/export_viva_evidence.py --check
+      - run: npm ci --no-audit --no-fund
+        working-directory: web/viva
+      - run: npm run build
+        working-directory: web/viva
   cpu-regressions:
     runs-on: ubuntu-latest
     timeout-minutes: 10

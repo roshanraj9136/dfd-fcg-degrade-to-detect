@@ -1,0 +1,130 @@
+{
+  "fusion": {
+    "members": [
+      "dfd",
+      "pe_ft",
+      "pe_ft_sc",
+      "pe",
+      "pe_sc"
+    ],
+    "coef": [
+      1.0202801375478057,
+      0.08600422129351151,
+      1.4025912460570074,
+      0.11634728083546253,
+      -0.3620116524036459
+    ],
+    "intercept": 1.6068908599666947,
+    "fitted_on_validation_videos": 353,
+    "val_conds": [
+      "clean",
+      "blur",
+      "comp"
+    ]
+  },
+  "reweight": {
+    "options": 15,
+    "selected": null
+  },
+  "blur_transfer": {
+    "pe": {
+      "raw": {
+        "n": 130,
+        "acc": 0.5307692307692308,
+        "false_alarm": 0.8571428571428571,
+        "caught": 0.9833333333333333,
+        "bacc": 0.5630952380952381,
+        "auroc": 0.8071428571428572
+      },
+      "corrected": {
+        "n": 130,
+        "acc": 0.7,
+        "false_alarm": 0.3142857142857143,
+        "caught": 0.7166666666666667,
+        "bacc": 0.7011904761904761,
+        "auroc": 0.8273809523809522
+      }
+    },
+    "pe_ft": {
+      "raw": {
+        "n": 130,
+        "acc": 0.7461538461538462,
+        "false_alarm": 0.17142857142857143,
+        "caught": 0.65,
+        "bacc": 0.7392857142857143,
+        "auroc": 0.7766666666666667
+      },
+      "corrected": {
+        "n": 130,
+        "acc": 0.6461538461538462,
+        "false_alarm": 0.04285714285714286,
+        "caught": 0.2833333333333333,
+        "bacc": 0.6202380952380953,
+        "auroc": 0.7795238095238095
+      }
+    },
+    "clip": {
+      "raw": {
+        "n": 130,
+        "acc": 0.47692307692307695,
+        "false_alarm": 0.9571428571428572,
+        "caught": 0.9833333333333333,
+        "bacc": 0.513095238095238,
+        "auroc": 0.7878571428571429
+      },
+      "corrected": {
+        "n": 130,
+        "acc": 0.7153846153846154,
+        "false_alarm": 0.3,
+        "caught": 0.7333333333333333,
+        "bacc": 0.7166666666666666,
+        "auroc": 0.7649999999999999
+      }
+    }
+  },
+  "experiments": {
+    "round3_clip": {
+      "options": 127,
+      "validation_videos": 313,
+      "chosen": "dfd+pe_ft_sc+pe_sc",
+      "live_new_bacc": 0.8501510472610097,
+      "candidate_new_bacc": 0.8271918635875404,
+      "release_passed": false
+    },
+    "paired_v1": {
+      "options": 127,
+      "validation_videos": 313,
+      "chosen": "dfd+pe_ft_sc+pe_sc",
+      "live_new_bacc": 0.8501510472610097,
+      "candidate_new_bacc": 0.8271918635875404,
+      "release_passed": false
+    }
+  },
+  "paired_training": {
+    "train_videos": 2143,
+    "validation_videos": 313,
+    "pairs": 131,
+    "validation": [
+      {
+        "step": 0,
+        "auroc": 0.9038
+      },
+      {
+        "step": 250,
+        "auroc": 0.9033
+      },
+      {
+        "step": 500,
+        "auroc": 0.9024
+      },
+      {
+        "step": 750,
+        "auroc": 0.9024
+      },
+      {
+        "step": 1000,
+        "auroc": 0.9024
+      }
+    ]
+  }
+}
