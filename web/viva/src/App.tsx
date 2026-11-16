@@ -218,7 +218,7 @@ function Story() {
         <Big k="2 · Cause" v="+1.44 vs −0.17" text="A 2-pixel blur adds fake evidence to real faces, almost none to fakes. The model reads fine detail as “real”." />
         <Big k="3 · My fix" tone="brand" v="22.5% → 8.7%" text="false alarms on damaged video with a fitted read-out. DFD-FCG stays frozen; fewer fakes are also caught." />
         <Big k="4 · Final checker" tone="real" v={<>{pc(CK.overall_acc_original)} → {pc(CK.overall_acc)}</>}
-          text={<>correct on {CK.overall_videos} test videos as uploaded: five scores from three networks, including a fine-tuned GenD.</>} />
+          text={<>published accuracy on {CK.overall_videos} videos without added damage: DFD-FCG + self-calibration → five-score fusion.</>} />
       </div>
       <Card className="mt-4">
         <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Words I use</div>
@@ -420,7 +420,7 @@ function Final() {
       </div>
       </details>
       <div className="mt-6 grid gap-4 md:grid-cols-3">
-        <Big k={`All ${CK.overall_videos} test videos`} tone="real" v={<>{pc(CK.overall_acc_original)} → {pc(CK.overall_acc)}</>} text="correct answers, released DFD-FCG → live checker" />
+        <Big k={`${CK.overall_videos} videos · published comparison`} tone="real" v={<>{pc(CK.overall_acc_original)} → {pc(CK.overall_acc)}</>} text="correct answers: DFD-FCG + self-calibration → chosen five-score fusion" />
         <Big k="Four two-class benchmarks" tone="real" v={<>{pc(BASE.mean_new_bacc)} → {pc(FIN.mean_new_bacc)}</>}
           text={<>mean balanced accuracy: Celeb-DF, social media and two MAVOS splits; 95% gain range {range(EN.ci95.new_sets)} points</>} />
         <Big k="Old FF++ (2019)" tone="fake" v={<>{pc(BASE.ffpp?.bacc)} → {pc(FIN.ffpp?.bacc)}</>}
@@ -428,7 +428,7 @@ function Final() {
       </div>
       <details className="mt-6">
         <summary className="mb-3 cursor-pointer font-semibold text-brand">See the results for each dataset</summary>
-        <Table head={["Held-out test set", "Released DFD-FCG → live checker"]}
+        <Table head={["Test set", "DFD-FCG + self-cal. → chosen fusion"]}
           rows={SETS.map(([g, name, k]) => [name, <Ch a={BASE[g]?.[k]} b={FIN[g]?.[k]} />])}
           note="Balanced accuracy at 0.5; fake-only sets show recall, not two-class accuracy. FF++, FaceShifter and DFDC rows average clean / strong blur / heavy compression. The 705-video headline counts unique videos without added damage; FaceShifter reuses FF++ reals. These are different summaries." />
       </details>
@@ -441,9 +441,11 @@ function Final() {
             Measured: newer {pts(d.gain_new_sets)}, FF++ {pts(d.change_ffpp)}, DFDC {pts(d.change_dfdc)}. I deployed it anyway because people upload modern
             videos, and I report the FF++ loss.</p></Card>
       </div>
-      <p className="mt-4 text-sm text-slate-600">Sources: <Source path="results/ensemble/results.json">published results</Source> and <Source path="results/ensemble/PLAN.md">selection and deployment decisions</Source>.</p>
-      <Say>The live checker combines five scores from three networks. On {CK.overall_videos} test videos as uploaded it is right
-        {" "}{pc(CK.overall_acc)} of the time against {pc(CK.overall_acc_original)} for the original model. It is a trade-off: on 2019 FF++ videos it
+      <p className="mt-4 text-sm text-slate-600"><b>Read the comparison correctly:</b> its DFD baseline already includes our self-calibration.
+        The FF++ / FaceShifter / DFDC results use cached two-clip DFD features; production defaults to eight clips. These published offline results are not a fresh end-to-end measurement of every current upload setting.
+        Sources: <Source path="service/ens/data.py">score loading and clip protocol</Source>, <Source path="results/ensemble/results.json">results</Source> and <Source path="results/ensemble/PLAN.md">deployment decision</Source>.</p>
+      <Say>The live checker combines five scores from three networks. In the published {CK.overall_videos}-video comparison, the chosen fusion reaches
+        {" "}{pc(CK.overall_acc)} accuracy against {pc(CK.overall_acc_original)} for DFD-FCG with self-calibration. It is a trade-off: on 2019 FF++ videos it
         loses {pts(-d.change_ffpp).replace("+", "")} points, which broke my own pre-written rule, and I say so.</Say>
     </Section>
   );
@@ -459,7 +461,7 @@ function Proof() {
     ["Beats simple baselines", "Same test, unseen damage: Platt re-calibration 12.2% false alarms, quality from the face crop 15.1%, blur test 18.1%, mine 8.7%."],
     ["Exact explanation", "The 240 terms across all heads, plus each head's constant, reconstruct their raw logits within 0.0000003 on 5,976 clips. This is score accounting, not causal proof."],
     ["Transfer to GenD-PE", <>The same recipe, fitted separately on GenD features: strong-blur false alarms {p0(GSC["ffpp:GB_5"].raw.false_alarm)} → {p0(GSC["ffpp:GB_5"].cal.false_alarm)}. Fake recall also falls, so this is a trade-off.</>],
-    ["Live = offline", "Parity tests check that the website's code gives the same scores as the evaluation code (tests/check_fusion_live.py)."],
+    ["Implementation parity", "The recorded parity checks matched live and offline scoring on selected examples with matched inputs. They do not replace a full-video accuracy evaluation under all production settings (tests/check_fusion_live.py)."],
     ["Uncertainty shown", <>Bootstrap 95% ranges: gain on newer sets {range(EN.ci95.new_sets)} points. Single seed and 50–120 videos per set, so small differences are noise.</>],
   ];
   return (
@@ -486,7 +488,7 @@ function Proof() {
         <div className="font-bold text-amber-800">Where it still fails (say it before they ask)</div>
         <ul className="mt-2 grid gap-1.5 text-sm text-slate-700 md:grid-cols-2">
           <li>• DFDC, a dataset none of the detectors trained on: {pc(FIN.dfdc?.bacc)} balanced accuracy.</li>
-          <li>• Clean 2019 FF++ reals: {p0(FIN["ffpp:clean"]?.false_alarm)} false alarms (released model {p0(BASE["ffpp:clean"]?.false_alarm)}).</li>
+          <li>• Clean 2019 FF++ reals: {p0(FIN["ffpp:clean"]?.false_alarm)} false alarms (DFD-FCG + self-calibration: {p0(BASE["ffpp:clean"]?.false_alarm)}).</li>
           <li>• Fully AI-made people: {pc(FIN.sf?.caught)} caught. Lip-sync-only fakes: no audio detector.</li>
           <li>• Noise hides fakes, and heavy blur removes the clues every detector needs.</li>
         </ul>
@@ -510,7 +512,7 @@ const NEW: [string, ReactNode, string, ReactNode][] = [
     "Your fix is tailored to DFD-FCG.",
     "The same fitting recipe works on GenD's class token with a separately fitted read-out. That is evidence of transfer to GenD, not proof it works on every detector."],
   ["Engineering: an evaluated public checker",
-    <>{pc(CK.overall_acc_original)} → {pc(CK.overall_acc)} correct on {CK.overall_videos} unseen videos; newer sets {pc(BASE.mean_new_bacc)} → {pc(FIN.mean_new_bacc)}.</>,
+    <>{pc(CK.overall_acc_original)} → {pc(CK.overall_acc)} correct in the {CK.overall_videos}-video comparison, from self-calibrated DFD-FCG to the chosen fusion.</>,
     "Ensembles always help; you tuned on the test set.",
     <>The combiner was fitted and chosen on {EN.n_val} validation videos only, and the rule was written before testing. It is not free: FF++ lost
       {" "}{pts(-EN.decision.change_ffpp).replace("+", "")} points, and I report that.</>],
@@ -631,7 +633,7 @@ function Script() {
     "I tested its real decisions at the 0.5 line with the authors' own damage code. Under strong blur it calls 63% of real videos fake.",
     "We trace how each head's evidence changes. A 2-pixel blur increases the fused logit by 1.44 on real faces, versus −0.17 on fakes on average. That supports a fine-detail bias. Our earlier attribution work is extended to all heads, patches and a larger study.",
     "We fit a small read-out to estimate the quality-related shift and subtract it. DFD-FCG stays frozen. False alarms fall from 22.5% to 8.7% under unseen damage types, but fake recall also falls. The same recipe transfers to GenD with a separately fitted read-out.",
-    `The live checker uses three networks and five scores, including our fine-tuned GenD, with a learned combiner. It reaches ${pc(CK.overall_acc)} accuracy on ${CK.overall_videos} test videos as uploaded. We report the FF++ loss and protocol limits. Later reliability fixes shipped; CLIP and paired-training experiments did not earn a model replacement.`,
+    `The live checker uses three networks and five scores, including our fine-tuned GenD, with a learned combiner. The chosen fusion reaches ${pc(CK.overall_acc)} in the published ${CK.overall_videos}-video comparison, versus ${pc(CK.overall_acc_original)} for self-calibrated DFD-FCG. We report the FF++ loss and protocol limits. Later reliability fixes shipped; CLIP and paired-training experiments did not earn a model replacement.`,
   ];
   return (
     <Section id="script" n="Practise this" title="The one-minute script">
