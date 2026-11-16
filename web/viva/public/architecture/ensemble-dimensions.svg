@@ -1,0 +1,504 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1152pt" height="1180.8pt" viewBox="0 0 1152 1180.8" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-11-16T16:34:58.684731</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.1, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 1180.8 
+L 1152 1180.8 
+L 1152 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 53.28 118.8 
+L 1098.72 118.8 
+Q 1108.8 118.8 1108.8 128.88 
+L 1108.8 205.92 
+Q 1108.8 216 1098.72 216 
+L 53.28 216 
+Q 43.2 216 43.2 205.92 
+L 43.2 128.88 
+Q 43.2 118.8 53.28 118.8 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #f8fafc; stroke: #475569; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 53.28 248.4 
+L 551.52 248.4 
+Q 561.6 248.4 561.6 258.48 
+L 561.6 400.32 
+Q 561.6 410.4 551.52 410.4 
+L 53.28 410.4 
+Q 43.2 410.4 43.2 400.32 
+L 43.2 258.48 
+Q 43.2 248.4 53.28 248.4 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 172.8 412.400391 
+Q 172.8 424.800771 172.8 435.300494 
+" clip-path="url(#pbf6104c665)" style="fill: none; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 176.4 428.100494 
+L 172.8 435.300494 
+L 169.2 428.100494 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #64748b; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 432 412.400391 
+Q 432 424.800771 432 435.300494 
+" clip-path="url(#pbf6104c665)" style="fill: none; stroke: #0f766e; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 435.6 428.100494 
+L 432 435.300494 
+L 428.4 428.100494 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #0f766e; stroke: #0f766e; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 53.28 442.8 
+L 281.52 442.8 
+Q 291.6 442.8 291.6 452.88 
+L 291.6 609.12 
+Q 291.6 619.2 281.52 619.2 
+L 53.28 619.2 
+Q 43.2 619.2 43.2 609.12 
+L 43.2 452.88 
+Q 43.2 442.8 53.28 442.8 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 323.28 442.8 
+L 551.52 442.8 
+Q 561.6 442.8 561.6 452.88 
+L 561.6 609.12 
+Q 561.6 619.2 551.52 619.2 
+L 323.28 619.2 
+Q 313.2 619.2 313.2 609.12 
+L 313.2 452.88 
+Q 313.2 442.8 323.28 442.8 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #f0fdfa; stroke: #0f766e; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 600.48 248.4 
+L 1098.72 248.4 
+Q 1108.8 248.4 1108.8 258.48 
+L 1108.8 400.32 
+Q 1108.8 410.4 1098.72 410.4 
+L 600.48 410.4 
+Q 590.4 410.4 590.4 400.32 
+L 590.4 258.48 
+Q 590.4 248.4 600.48 248.4 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 720 412.400391 
+Q 720 424.800771 720 435.300494 
+" clip-path="url(#pbf6104c665)" style="fill: none; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 723.6 428.100494 
+L 720 435.300494 
+L 716.4 428.100494 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #64748b; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 979.2 412.400391 
+Q 979.2 424.800771 979.2 435.300494 
+" clip-path="url(#pbf6104c665)" style="fill: none; stroke: #0f766e; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 982.8 428.100494 
+L 979.2 435.300494 
+L 975.6 428.100494 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #0f766e; stroke: #0f766e; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 600.48 442.8 
+L 828.72 442.8 
+Q 838.8 442.8 838.8 452.88 
+L 838.8 609.12 
+Q 838.8 619.2 828.72 619.2 
+L 600.48 619.2 
+Q 590.4 619.2 590.4 609.12 
+L 590.4 452.88 
+Q 590.4 442.8 600.48 442.8 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 870.48 442.8 
+L 1098.72 442.8 
+Q 1108.8 442.8 1108.8 452.88 
+L 1108.8 609.12 
+Q 1108.8 619.2 1098.72 619.2 
+L 870.48 619.2 
+Q 860.4 619.2 860.4 609.12 
+L 860.4 452.88 
+Q 860.4 442.8 870.48 442.8 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #f0fdfa; stroke: #0f766e; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 53.28 687.6 
+L 234.72 687.6 
+Q 244.8 687.6 244.8 697.68 
+L 244.8 749.52 
+Q 244.8 759.6 234.72 759.6 
+L 53.28 759.6 
+Q 43.2 759.6 43.2 749.52 
+L 43.2 697.68 
+Q 43.2 687.6 53.28 687.6 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #f0fdfa; stroke: #0f766e; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 144 761.600391 
+Q 144 774.000771 144 784.500494 
+" clip-path="url(#pbf6104c665)" style="fill: none; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 147.6 777.300494 
+L 144 784.500494 
+L 140.4 777.300494 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #64748b; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 269.28 687.6 
+L 450.72 687.6 
+Q 460.8 687.6 460.8 697.68 
+L 460.8 749.52 
+Q 460.8 759.6 450.72 759.6 
+L 269.28 759.6 
+Q 259.2 759.6 259.2 749.52 
+L 259.2 697.68 
+Q 259.2 687.6 269.28 687.6 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_16">
+    <path d="M 360 761.600391 
+Q 360 774.000771 360 784.500494 
+" clip-path="url(#pbf6104c665)" style="fill: none; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 363.6 777.300494 
+L 360 784.500494 
+L 356.4 777.300494 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #64748b; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_17">
+    <path d="M 485.28 687.6 
+L 666.72 687.6 
+Q 676.8 687.6 676.8 697.68 
+L 676.8 749.52 
+Q 676.8 759.6 666.72 759.6 
+L 485.28 759.6 
+Q 475.2 759.6 475.2 749.52 
+L 475.2 697.68 
+Q 475.2 687.6 485.28 687.6 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #f0fdfa; stroke: #0f766e; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_18">
+    <path d="M 576 761.600391 
+Q 576 774.000771 576 784.500494 
+" clip-path="url(#pbf6104c665)" style="fill: none; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 579.6 777.300494 
+L 576 784.500494 
+L 572.4 777.300494 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #64748b; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_19">
+    <path d="M 701.28 687.6 
+L 882.72 687.6 
+Q 892.8 687.6 892.8 697.68 
+L 892.8 749.52 
+Q 892.8 759.6 882.72 759.6 
+L 701.28 759.6 
+Q 691.2 759.6 691.2 749.52 
+L 691.2 697.68 
+Q 691.2 687.6 701.28 687.6 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_20">
+    <path d="M 792 761.600391 
+Q 792 774.000771 792 784.500494 
+" clip-path="url(#pbf6104c665)" style="fill: none; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 795.6 777.300494 
+L 792 784.500494 
+L 788.4 777.300494 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #64748b; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_21">
+    <path d="M 917.28 687.6 
+L 1098.72 687.6 
+Q 1108.8 687.6 1108.8 697.68 
+L 1108.8 749.52 
+Q 1108.8 759.6 1098.72 759.6 
+L 917.28 759.6 
+Q 907.2 759.6 907.2 749.52 
+L 907.2 697.68 
+Q 907.2 687.6 917.28 687.6 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #f0fdfa; stroke: #0f766e; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_22">
+    <path d="M 1008 761.600391 
+Q 1008 774.000771 1008 784.500494 
+" clip-path="url(#pbf6104c665)" style="fill: none; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 1011.6 777.300494 
+L 1008 784.500494 
+L 1004.4 777.300494 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #64748b; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_23">
+    <path d="M 53.28 792 
+L 1098.72 792 
+Q 1108.8 792 1108.8 802.08 
+L 1108.8 918.72 
+Q 1108.8 928.8 1098.72 928.8 
+L 53.28 928.8 
+Q 43.2 928.8 43.2 918.72 
+L 43.2 802.08 
+Q 43.2 792 53.28 792 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #f0fdfa; stroke: #0f766e; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_24">
+    <path d="M 576 930.802588 
+Q 576 941.400283 576 950.097319 
+" clip-path="url(#pbf6104c665)" style="fill: none; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 579.6 942.897319 
+L 576 950.097319 
+L 572.4 942.897319 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #64748b; stroke: #64748b; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_25">
+    <path d="M 53.28 957.6 
+L 1098.72 957.6 
+Q 1108.8 957.6 1108.8 967.68 
+L 1108.8 1041.12 
+Q 1108.8 1051.2 1098.72 1051.2 
+L 53.28 1051.2 
+Q 43.2 1051.2 43.2 1041.12 
+L 43.2 967.68 
+Q 43.2 957.6 53.28 957.6 
+z
+" clip-path="url(#pbf6104c665)" style="fill: #f8fafc; stroke: #475569; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 25px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="43.2" y="62.196094" transform="rotate(-0 43.2 62.196094)">2. GenD and the final ensemble: five scores, one answer</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="43.2" y="90.138047" transform="rotate(-0 43.2 90.138047)">The final fusion combines scores. It does not concatenate DFD and GenD feature embeddings.</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="57.6" y="144.597656" transform="rotate(-0 57.6 144.597656)">Same face crops → sample up to 24 available frames</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="169.717969" transform="rotate(-0 57.6 169.717969)">One GenD input batch: [M, 3, 224, 224], where M ≤ 24. Each network handles individual frames.</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="190.597969" transform="rotate(-0 57.6 190.597969)">We run two GenD-PE network instances: our fine-tuned checkpoint and the released checkpoint.</text>
+   </g>
+   <g id="text_6">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4338ca" x="57.6" y="274.197656" transform="rotate(-0 57.6 274.197656)">Fine-tuned GenD-PE</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="298.938047" transform="rotate(-0 57.6 298.938047)">We updated LayerNorm parameters + classifier head.</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="319.818047" transform="rotate(-0 57.6 319.818047)">Perception Encoder L → f: [M, 1024]</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="340.698047" transform="rotate(-0 57.6 340.698047)">L2 normalize each frame's vector → f_norm: [M, 1024]</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="361.578047" transform="rotate(-0 57.6 361.578047)">Linear(1024 → 2) → logits: [M, 2]</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="382.458047" transform="rotate(-0 57.6 382.458047)">d = logit_FAKE − logit_REAL → [M]</text>
+   </g>
+   <g id="text_12">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4338ca" x="57.6" y="468.596484" transform="rotate(-0 57.6 468.596484)">Raw score</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="492.958125" transform="rotate(-0 57.6 492.958125)">d: [M]</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="513.838125" transform="rotate(-0 57.6 513.838125)">sigmoid(d) → [M]</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="534.718125" transform="rotate(-0 57.6 534.718125)">Mean over frames</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="555.598125" transform="rotate(-0 57.6 555.598125)">→ one probability</text>
+   </g>
+   <g id="text_17">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f766e" x="327.6" y="468.597656" transform="rotate(-0 327.6 468.597656)">Corrected score</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="327.6" y="492.958125" transform="rotate(-0 327.6 492.958125)">Standardize f_norm</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="327.6" y="513.838125" transform="rotate(-0 327.6 513.838125)">Read-out: 1024 → 1</text>
+   </g>
+   <g id="text_20">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="327.6" y="534.718125" transform="rotate(-0 327.6 534.718125)">g: [M]; use d − g</text>
+   </g>
+   <g id="text_21">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="327.6" y="555.598125" transform="rotate(-0 327.6 555.598125)">sigmoid, then mean</text>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="327.6" y="576.478125" transform="rotate(-0 327.6 576.478125)">→ one probability</text>
+   </g>
+   <g id="text_23">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4338ca" x="604.8" y="274.197656" transform="rotate(-0 604.8 274.197656)">Released GenD-PE</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="298.938047" transform="rotate(-0 604.8 298.938047)">Authors' released weights; unchanged by us.</text>
+   </g>
+   <g id="text_25">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="319.818047" transform="rotate(-0 604.8 319.818047)">Perception Encoder L → f: [M, 1024]</text>
+   </g>
+   <g id="text_26">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="340.698047" transform="rotate(-0 604.8 340.698047)">L2 normalize each frame's vector → f_norm: [M, 1024]</text>
+   </g>
+   <g id="text_27">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="361.578047" transform="rotate(-0 604.8 361.578047)">Linear(1024 → 2) → logits: [M, 2]</text>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="382.458047" transform="rotate(-0 604.8 382.458047)">d = logit_FAKE − logit_REAL → [M]</text>
+   </g>
+   <g id="text_29">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4338ca" x="604.8" y="468.596484" transform="rotate(-0 604.8 468.596484)">Raw score</text>
+   </g>
+   <g id="text_30">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="492.958125" transform="rotate(-0 604.8 492.958125)">d: [M]</text>
+   </g>
+   <g id="text_31">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="513.838125" transform="rotate(-0 604.8 513.838125)">sigmoid(d) → [M]</text>
+   </g>
+   <g id="text_32">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="534.718125" transform="rotate(-0 604.8 534.718125)">Mean over frames</text>
+   </g>
+   <g id="text_33">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="604.8" y="555.598125" transform="rotate(-0 604.8 555.598125)">→ one probability</text>
+   </g>
+   <g id="text_34">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f766e" x="874.8" y="468.597656" transform="rotate(-0 874.8 468.597656)">Corrected score</text>
+   </g>
+   <g id="text_35">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="874.8" y="492.958125" transform="rotate(-0 874.8 492.958125)">Standardize f_norm</text>
+   </g>
+   <g id="text_36">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="874.8" y="513.838125" transform="rotate(-0 874.8 513.838125)">Read-out: 1024 → 1</text>
+   </g>
+   <g id="text_37">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="874.8" y="534.718125" transform="rotate(-0 874.8 534.718125)">g: [M]; use d − g</text>
+   </g>
+   <g id="text_38">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="874.8" y="555.598125" transform="rotate(-0 874.8 555.598125)">sigmoid, then mean</text>
+   </g>
+   <g id="text_39">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="874.8" y="576.478125" transform="rotate(-0 874.8 576.478125)">→ one probability</text>
+   </g>
+   <g id="text_40">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="43.2" y="657.31125" transform="rotate(-0 43.2 657.31125)">Each GenD network runs once for both of its scores. Each corrected path has its own fitted W: [1, 1024], b: [1].</text>
+   </g>
+   <g id="text_41">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f766e" x="57.6" y="710.738203" transform="rotate(-0 57.6 710.738203)">DFD corrected</text>
+   </g>
+   <g id="text_42">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="737.758125" transform="rotate(-0 57.6 737.758125)">p_dfd: scalar</text>
+   </g>
+   <g id="text_43">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4338ca" x="273.6" y="710.738203" transform="rotate(-0 273.6 710.738203)">Tuned PE raw</text>
+   </g>
+   <g id="text_44">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="273.6" y="737.758125" transform="rotate(-0 273.6 737.758125)">p_pe_ft: scalar</text>
+   </g>
+   <g id="text_45">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f766e" x="489.6" y="710.738203" transform="rotate(-0 489.6 710.738203)">Tuned PE corrected</text>
+   </g>
+   <g id="text_46">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="489.6" y="737.758125" transform="rotate(-0 489.6 737.758125)">p_pe_ft_sc: scalar</text>
+   </g>
+   <g id="text_47">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #4338ca" x="705.6" y="710.738203" transform="rotate(-0 705.6 710.738203)">Released PE raw</text>
+   </g>
+   <g id="text_48">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="705.6" y="737.758125" transform="rotate(-0 705.6 737.758125)">p_pe: scalar</text>
+   </g>
+   <g id="text_49">
+    <text style="font-weight: 700; font-size: 11.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f766e" x="921.6" y="710.738203" transform="rotate(-0 921.6 710.738203)">Released PE corrected</text>
+   </g>
+   <g id="text_50">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="921.6" y="737.758125" transform="rotate(-0 921.6 737.758125)">p_pe_sc: scalar</text>
+   </g>
+   <g id="text_51">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f766e" x="57.6" y="817.797656" transform="rotate(-0 57.6 817.797656)">Stack FIVE score logits → logistic regression</text>
+   </g>
+   <g id="text_52">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="842.538047" transform="rotate(-0 57.6 842.538047)">x = [logit(p_dfd), logit(p_pe_ft), logit(p_pe_ft_sc), logit(p_pe), logit(p_pe_sc)] → [5] per face</text>
+   </g>
+   <g id="text_53">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="863.418047" transform="rotate(-0 57.6 863.418047)">Weights w: [5] = [1.020, 0.086, 1.403, 0.116, -0.362]; intercept b = 1.607</text>
+   </g>
+   <g id="text_54">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="884.298047" transform="rotate(-0 57.6 884.298047)">z = w · x + b → scalar;  p_face = sigmoid(z) → scalar between 0 and 1</text>
+   </g>
+   <g id="text_55">
+    <text style="font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="905.178047" transform="rotate(-0 57.6 905.178047)">logit(p) = ln(p / (1 − p)). Weights were fitted on validation videos; this is not a majority vote.</text>
+   </g>
+   <g id="text_56">
+    <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="57.6" y="983.397656" transform="rotate(-0 57.6 983.397656)">One video verdict</text>
+   </g>
+   <g id="text_57">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="1008.517969" transform="rotate(-0 57.6 1008.517969)">Track up to 2 faces → take max(p_face). If p ≥ 0.5: FAKE; otherwise: REAL.</text>
+   </g>
+   <g id="text_58">
+    <text style="font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="57.6" y="1029.397969" transform="rotate(-0 57.6 1029.397969)">Confidence = max(p, 1 − p). Invalid scores return an analysis error. No weights are learned from an upload.</text>
+   </g>
+   <g id="text_59">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="43.2" y="1092.91125" transform="rotate(-0 43.2 1092.91125)">Papers: GenD — Yermakov et al., WACV 2026; Perception Encoder — Bolya et al., 2025 (arXiv:2504.13181).</text>
+   </g>
+   <g id="text_60">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="43.2" y="1118.11125" transform="rotate(-0 43.2 1118.11125)">Our additions: fitted quality read-outs, the GenD fine-tune, learned score fusion, evaluation and the deployed checker.</text>
+   </g>
+   <g id="text_61">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="43.2" y="1142.235312" transform="rotate(-0 43.2 1142.235312)">Five separate score inputs from three networks; raw and corrected GenD scores share a forward pass.</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pbf6104c665">
+   <rect x="0" y="0" width="1152" height="1180.8"/>
+  </clipPath>
+ </defs>
+</svg>

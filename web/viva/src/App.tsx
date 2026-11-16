@@ -3,8 +3,9 @@ import type { ReactNode } from "react";
 import ensemble from "./ensemble.json";
 import retrain from "./retrain.json";
 import scores from "./scores.json";
-import { BlurTestFig, FixFig, HeroFig, ModelArchFig, ScoreStrips } from "./figs";
+import { BlurTestFig, FixFig, ModelArchFig, ScoreStrips } from "./figs";
 import { DeploymentFlow, ExtraWork, LiveArchitecture, Source } from "./Evidence";
+import { ArchitectureHero, PaperMap, TensorArchitecture } from "./TensorArchitecture";
 
 const LINKS = {
   checker: "https://dfd-fcg-degrade-to-detect.vercel.app",
@@ -14,8 +15,8 @@ const LINKS = {
 };
 
 const NAV: [string, string][] = [
-  ["story", "Overview"], ["final", "Architecture"], ["novelty", "Novelty"], ["extra", "Extra work"],
-  ["model", "Inside DFD-FCG"], ["fix", "Self-calibration"], ["proof", "Evidence"], ["questions", "Questions"], ["script", "Script"],
+  ["final", "Architecture"], ["dimensions", "Dimensions"], ["novelty", "Novelty"], ["extra", "Extra work"],
+  ["papers", "Papers"], ["results", "Results"], ["questions", "Viva Q&A"], ["research", "Research"],
 ];
 
 /* ------------------------------------------------------------------ data (all numbers come from these files) */
@@ -46,26 +47,36 @@ const range = (r: number[]) => `${pts(r[0])} to ${pts(r[1])}`;
 export default function App() {
   return (
     <div className="min-h-screen">
+      <a className="skip-link" href="#content">Skip to content</a>
       <Header />
-      <main className="mx-auto max-w-6xl px-4 sm:px-5">
-        <Hero />
+      <main id="content" className="mx-auto max-w-6xl px-4 sm:px-5">
+        <ArchitectureHero />
         <Story />
         <Final />
+        <TensorArchitecture />
         <Novelty />
         <ExtraWork />
+        <PaperMap />
+        <Results />
+        <Proof />
+        <Questions />
+        <Script />
+        <div id="research" className="scroll-mt-24 border-t-2 border-slate-200 pt-12">
+          <p className="font-semibold text-brand">The research behind the checker</p>
+          <h2 className="mt-2 text-3xl font-extrabold tracking-tight">Go deeper into the evidence.</h2>
+          <p className="mt-3 max-w-3xl text-slate-600">The original experiments explain why we added self-calibration. These use the research protocol; the live architecture and its dimensions are described above.</p>
+          <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-brand"><a href="#model">Spatial & temporal</a><a href="#problem">Failure under blur</a><a href="#heatmap">Heatmaps</a><a href="#fix">Fitting the correction</a></div>
+        </div>
         <Model />
         <Problem />
         <Cause />
         <Heatmap />
         <Fix />
-        <Proof />
-        <Questions />
-        <Script />
       </main>
       <footer className="mt-10 border-t border-slate-200 bg-white">
         <div className="mx-auto max-w-6xl px-5 py-8 text-sm text-slate-600">
           B.Tech project by Roshan Raj. Builds on DFD-FCG by Han, Huang, Hua and Chen (CVPR 2025) and GenD by Yermakov et al. (WACV 2026).
-          Every number on this page comes from the result files in the <a className="text-brand underline" href={LINKS.github}>repository</a>.
+          Measurements link to result files; architecture dimensions link to the implementation. <a className="text-brand underline" href={LINKS.github}>Code and evidence</a> · <a className="text-brand underline" href="/architecture/architecture-explained.pdf">Architecture PDF</a> · <a className="text-brand underline" href="#top">Back to top</a>.
         </div>
       </footer>
     </div>
@@ -79,7 +90,7 @@ function Header() {
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
         <a href="#top" className="flex shrink-0 items-center gap-2 whitespace-nowrap font-bold text-slate-900">
-          <img src="/favicon.svg" alt="" className="h-7 w-7" /> Viva guide
+          <img src="/favicon.svg" alt="" className="h-7 w-7" /><span className="hidden sm:inline">Degrade to Detect</span><span className="sm:hidden">DFD viva</span>
         </a>
         <nav className="hidden gap-0.5 xl:flex">
           {NAV.map(([id, label]) => <a key={id} href={`#${id}`} className="whitespace-nowrap rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900">{label}</a>)}
@@ -99,7 +110,7 @@ function Section({ id, n, title, lead, children, tone }: { id: string; n: string
   const k = tone === "red" ? "text-fake" : tone === "green" ? "text-real" : tone === "amber" ? "text-amber-700" : "text-brand";
   return (
     <section id={id} className="scroll-mt-20 py-12">
-      <div className={`text-sm font-bold uppercase tracking-wider ${k}`}>{n}</div>
+      <div className={`text-sm font-semibold ${k}`}>{n}</div>
       <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl">{title}</h2>
       {lead && <p className="mt-3 max-w-3xl text-slate-600">{lead}</p>}
       <div className="mt-6">{children}</div>
@@ -125,7 +136,7 @@ function Fig({ children, caption }: { children: ReactNode; caption?: ReactNode }
 function Say({ children }: { children: ReactNode }) {
   return (
     <div className="mt-6 rounded-2xl border-l-4 border-brand bg-brand-soft px-5 py-4 text-slate-800">
-      <div className="text-xs font-bold uppercase tracking-wider text-brand">Say it like this</div>
+        <div className="text-sm font-bold text-brand">Say it like this</div>
       <p className="mt-1">{children}</p>
     </div>
   );
@@ -186,39 +197,13 @@ function Steps({ items }: { items: [string, ReactNode][] }) {
 }
 
 /* ------------------------------------------------------------------ sections */
-function Hero() {
-  return (
-    <section id="top" className="grid items-center gap-8 py-10 md:grid-cols-[1.1fr_1fr]">
-      <div>
-        <div className="text-sm font-semibold text-brand">B.Tech project · Roshan Raj · viva guide</div>
-        <h1 className="mt-2 text-3xl font-extrabold leading-tight tracking-tight text-slate-900 md:text-5xl">
-          Fake, or just <span className="text-brand">low quality</span>?
-        </h1>
-        <p className="mt-4 text-lg text-slate-600">
-          A top deepfake detector (DFD-FCG, CVPR 2025) calls <b className="text-slate-800">blurry real videos fake</b>. I measured it, found
-          how its evidence changes, and fitted a small correction <b className="text-slate-800">without retraining DFD-FCG</b>.
-          I then adapted GenD and built a checker that combines <b className="text-slate-800">5 scores from 3 networks</b> into one REAL or FAKE answer.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <a className="btn-primary" href="#final">Understand the architecture</a>
-          <a className="btn-ghost" href="#novelty">What is new</a>
-          <a className="btn-ghost" href="#extra">Extra work completed</a>
-        </div>
-      </div>
-      <Card className="p-4"><HeroFig /></Card>
-    </section>
-  );
-}
-
 function Story() {
   return (
-    <Section id="story" n="In one minute" title="Four steps: problem, cause, fix, final checker">
-      <div className="grid gap-4 md:grid-cols-4">
-        <Big k="1 · Problem" tone="fake" v="63%" text="of real test videos called FAKE under strong blur (3% on clean). The paper's AUROC still looks fine." />
-        <Big k="2 · Cause" v="+1.44 vs −0.17" text="A 2-pixel blur adds fake evidence to real faces, almost none to fakes. The model reads fine detail as “real”." />
-        <Big k="3 · My fix" tone="brand" v="22.5% → 8.7%" text="false alarms on damaged video with a fitted read-out. DFD-FCG stays frozen; fewer fakes are also caught." />
-        <Big k="4 · Final checker" tone="real" v={<>{pc(CK.overall_acc_original)} → {pc(CK.overall_acc)}</>}
-          text={<>published accuracy on {CK.overall_videos} videos without added damage: DFD-FCG + self-calibration → five-score fusion.</>} />
+    <Section id="story" n="Start here" title="The problem we are trying to solve">
+      <div className="grid gap-6 md:grid-cols-3">
+        <div><h3 className="text-lg font-bold">Low quality can look like a fake.</h3><p className="mt-2 text-slate-600">Blur and compression change a detector’s internal evidence. A genuine video can cross the FAKE threshold even when it was never manipulated.</p></div>
+        <div><h3 className="text-lg font-bold">Estimate the quality-related shift.</h3><p className="mt-2 text-slate-600">Our small fitted read-out uses the detector’s own features to predict a score correction. The deployed DFD-FCG weights stay frozen.</p></div>
+        <div><h3 className="text-lg font-bold">Combine complementary scores.</h3><p className="mt-2 text-slate-600">DFD reads clips; GenD reads frames. We adapt one GenD model and learn how to combine five scores into a practical video checker.</p></div>
       </div>
       <Card className="mt-4">
         <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Words I use</div>
@@ -395,8 +380,6 @@ const SETS: [string, string, "bacc" | "caught"][] = [
 ];
 
 function Final() {
-  const d = EN.decision;
-  const b = CK.bands;
   return (
     <Section id="final" n="The architecture" tone="brand" title="One video → three networks → five scores → one answer"
       lead={<>DFD-FCG reads short video clips. Two versions of GenD-PE read individual frames: the released model and our fine-tuned model.
@@ -419,6 +402,15 @@ function Final() {
       ]} />
       </div>
       </details>
+    </Section>
+  );
+}
+
+function Results() {
+  const d = EN.decision;
+  const b = CK.bands;
+  return (
+    <Section id="results" n="What the measurements show" title="The gains—and the cost" lead="These are stored benchmark results. Read the baseline, evaluation settings and limitations alongside the headline numbers.">
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         <Big k={`${CK.overall_videos} videos · published comparison`} tone="real" v={<>{pc(CK.overall_acc_original)} → {pc(CK.overall_acc)}</>} text="correct answers: DFD-FCG + self-calibration → chosen five-score fusion" />
         <Big k="Four two-class benchmarks" tone="real" v={<>{pc(BASE.mean_new_bacc)} → {pc(FIN.mean_new_bacc)}</>}
@@ -533,6 +525,7 @@ function Novelty() {
       </div>
       <Say>Our contribution is to separate “looks fake” from “looks low quality” in the detector's decision. We measured the problem, traced how the evidence changes,
         and fitted a small correction from the model's own features. Then we tested transfer and built a usable checker around it. We did not invent CLIP, GenD, ridge regression or ensembles.</Say>
+      <p lang="hi-Latn" className="mt-4 border-l-4 border-teal-600 bg-teal-50 px-5 py-4 text-sm leading-relaxed text-teal-950"><b>Easy Hinglish:</b> Base model authors ka hai. Hamne dikhaya ki low-quality real video bhi fake lag sakta hai, andar ke score changes analyse kiye, aur unhi features se correction fit kiya. Phir GenD par test karke final checker banaya. Novelty is study aur correction ke evidence mein hai; sirf models jodna ek naya foundation model banana nahi hai.</p>
       <p className="mt-4 text-sm text-slate-600">This describes the contribution relative to the base models and our earlier project. A claim of being the first in the literature would need a broader literature review.
         Sources: <Source path="qa/engine.py">attribution extension</Source>, <Source path="qa/methods.py">correction</Source>, <Source path="results/tables.md">study results</Source>.</p>
       <details className="mt-5">
@@ -579,6 +572,11 @@ function Novelty() {
 }
 
 const QA: [string, ReactNode][] = [
+  ["What is the exact input dimension?", "DFD-FCG receives [B, 10, 3, 224, 224]: batch of clips, ten frames, RGB channels, height and width. Each GenD-PE receives [M, 3, 224, 224], with up to 24 sampled frames. The aligned face crops start at 150 × 150 before model transforms."],
+  ["Why 1024 spatial features and 256 temporal features?", "1024 is the CLIP ViT-L/14 hidden width. Spatial pooling keeps that width. The temporal branch ends with a 16 × 16 patch-response grid, flattened to 256 values. The numbers describe learned features, not the number of input frames."],
+  ["Exactly how do you concatenate the vectors?", "Append the spatial vector to the temporal vector along the last axis: [B, 1024] + [B, 256] becomes [B, 1280]. The authors’ fused head concatenates LayerNorm outputs. Our quality read-out concatenates raw features and then applies fitted per-feature standardization."],
+  ["What gets concatenated in the final ensemble?", "Five score logits, one per member, form a [5] vector for each face. We do not join the 1280-dimensional DFD features with the 1024-dimensional GenD features. The final logistic regression combines their scores."],
+  ["Which papers should I name?", "DFD-FCG (Han et al., CVPR 2025) is the video detector; GenD (Yermakov et al., WACV 2026) is the frame detector. CLIP (Radford et al., ICML 2021) is DFD’s backbone; Perception Encoder (Bolya et al., 2025) is the backbone of GenD-PE. Paper links and the contribution of each are above."],
   ["What exactly is wrong in the paper?",
     "Its numbers are right; its robustness test is incomplete. AUROC only checks the order of scores. A user sees the decision at 0.5, and there strong blur flips 63% of real videos to FAKE while AUROC still reads 0.905."],
   ["What is the difference between spatial and temporal?",
@@ -628,17 +626,25 @@ function Questions() {
 }
 
 function Script() {
-  const lines = [
-    "DFD-FCG is a CVPR 2025 video deepfake detector. It reads a face two ways: spatially, frame by frame, and temporally, how it moves. The paper says it is robust to blur and compression because its AUROC stays high.",
-    "I tested its real decisions at the 0.5 line with the authors' own damage code. Under strong blur it calls 63% of real videos fake.",
-    "We trace how each head's evidence changes. A 2-pixel blur increases the fused logit by 1.44 on real faces, versus −0.17 on fakes on average. That supports a fine-detail bias. Our earlier attribution work is extended to all heads, patches and a larger study.",
-    "We fit a small read-out to estimate the quality-related shift and subtract it. DFD-FCG stays frozen. False alarms fall from 22.5% to 8.7% under unseen damage types, but fake recall also falls. The same recipe transfers to GenD with a separately fitted read-out.",
-    `The live checker uses three networks and five scores, including our fine-tuned GenD, with a learned combiner. The chosen fusion reaches ${pc(CK.overall_acc)} in the published ${CK.overall_videos}-video comparison, versus ${pc(CK.overall_acc_original)} for self-calibrated DFD-FCG. We report the FF++ loss and protocol limits. Later reliability fixes shipped; CLIP and paired-training experiments did not earn a model replacement.`,
+  const [hindi, setHindi] = useState(false);
+  const lines = hindi ? [
+    "Hamare project ka problem hai: blurry real video bhi detector ko fake lag sakta hai. Hamne is quality bias ko measure kiya aur internal features se correction fit kiya.",
+    "DFD-FCG 10-frame clips leta hai, har frame 224 by 224 RGB. Spatial branch 1024 numbers aur temporal branch 256 numbers deti hai. Dono concatenate hoke 1280 numbers bante hain.",
+    "Original classifier in features se three heads ke logits banata hai. Hamara fitted read-out raw features se three quality shifts predict karta hai, jinhe subtract karke ek corrected DFD score milta hai.",
+    "Released aur fine-tuned GenD-PE har frame ko separately dekhte hain. Dono ek raw aur ek corrected score dete hain. DFD ka ek aur GenD ke chaar: total five scores.",
+    "Learned combiner five score logits se final probability deta hai. Hamara contribution robustness study, correction, transfer, adaptation aur deployed checker hai. Gains ke saath lower fake recall, FF++ loss aur protocol limits bhi report kiye hain.",
+  ] : [
+    "Our problem is that a blurry real video can look fake to a detector. We measured this quality bias and fitted a correction from its internal features.",
+    "DFD-FCG takes ten-frame clips at 224 by 224 RGB. Its spatial branch produces 1024 values and its temporal branch produces 256. Concatenating them gives 1280 features.",
+    "The authors’ classifier produces three head scores. Our fitted read-out uses raw features to predict three quality shifts. We subtract them, apply sigmoid and average to obtain one corrected DFD score.",
+    "Released and fine-tuned GenD-PE process frames individually. Each gives a raw and a corrected score. Together with DFD, that makes five scores from three networks. A learned combiner gives the final probability.",
+    "Our contribution is the robustness study, feature-based correction, transfer evidence and evaluated checker. We report the gains together with the fake-recall cost, FF++ loss and evaluation limits.",
   ];
   return (
-    <Section id="script" n="Practise this" title="The one-minute script">
+    <Section id="script" n="Practise this" title="Your one-minute architecture answer">
+      <div className="mb-4 flex gap-2" role="group" aria-label="Script language"><button aria-pressed={!hindi} onClick={() => setHindi(false)} className={!hindi ? "btn-primary" : "btn-ghost"}>English</button><button aria-pressed={hindi} onClick={() => setHindi(true)} className={hindi ? "btn-primary" : "btn-ghost"}>Easy Hinglish</button></div>
       <Card className="p-6 md:p-8">
-        <ol className="space-y-3">
+        <ol className="space-y-3" lang={hindi ? "hi-Latn" : "en"}>
           {lines.map((l, i) => (
             <li key={i} className="flex gap-4 text-slate-800 md:text-lg">
               <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-soft text-sm font-bold text-brand">{i + 1}</span>

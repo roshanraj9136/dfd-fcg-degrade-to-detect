@@ -13,9 +13,9 @@ const labels: Record<string, string> = {
 const networks = [
   { title: "DFD-FCG", origin: "Authors’ released weights", input: "8 clips × 10 frames per face", view: "Spatial + temporal features", members: ["dfd"],
     detail: "Frozen CLIP ViT-L/14 and the authors’ trained side network produce three head logits. Our fitted ridge read-out predicts a shift for each head. Subtract it, apply sigmoid to each head, then average the probabilities over heads and clips." },
-  { title: "Fine-tuned GenD-PE", origin: "Our adapted checkpoint", input: "24 frames per face", view: "Single-frame features", members: ["pe_ft", "pe_ft_sc"],
+  { title: "Fine-tuned GenD-PE", origin: "Our adapted checkpoint", input: "Up to 24 frames per face", view: "Single-frame features", members: ["pe_ft", "pe_ft_sc"],
     detail: "PE means Perception Encoder, a foundation image model. We fine-tuned its LayerNorm parameters and GenD’s classifier head using the GenD recipe; the other encoder weights stay frozen. One run supplies both raw and self-calibrated scores. The class-token read-out is fitted separately for this checkpoint." },
-  { title: "Released GenD-PE", origin: "Authors’ released weights", input: "24 frames per face", view: "Single-frame features", members: ["pe", "pe_sc"],
+  { title: "Released GenD-PE", origin: "Authors’ released weights", input: "Up to 24 frames per face", view: "Single-frame features", members: ["pe", "pe_sc"],
     detail: "This network keeps the released GenD-PE weights. The Perception Encoder summarizes each face frame, and a linear head scores it. We retain that raw score and also subtract a fitted quality shift from its frame logits. Frame probabilities are averaged for each score. Both scores share the same network run." },
 ];
 
